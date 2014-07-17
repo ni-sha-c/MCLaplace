@@ -40,7 +40,7 @@ module geometry_mod
 ! Boundary of "bad" part of domain - i.e. region close enough to boundary that
 ! trapezoid rule breaks down
    real(kind=8) :: x_bad(nmax), y_bad(nmax), ds_bad(nmax)
-   complex(kind=8) :: z_bad(nmax), dz_bad(nmax), z0_box(nmax/5)
+   complex(kind=8) :: z_bad(nmax), dz_bad(nmax), z0_box(kmax,nmax/5)
 !
 ! Pointer arrays to points in grid that are in "close" region, and which 
 ! contour they are close to
@@ -76,13 +76,14 @@ subroutine CURVE_PARAM(th, kbod, xp, yp, xdot, ydot, xddot, yddot)
    implicit none
    real(kind=8), intent(in) :: th
    integer, intent(in) :: kbod
+   integer::N
    real(kind=8), intent(out) :: xp, yp, xdot, ydot, xddot, yddot
-   real(kind=8) :: ai, a2, b2, rnorm, radius, rdot, rddot, R, &
+   real(kind=8) :: ai, bi, a2, b2, rnorm, radius, rdot, rddot, R, &
                    anu, den, ddot, dddot, cs, sn, eps, snn, csn, thetax
 
          N = ncyc(kbod+1-k0)
          ai = ak(kbod+1-k0)
-         
+		 bi = bk(kbod+1-k0)	         
          thetax = 0.d0
          
          if (N.eq.0) then
@@ -90,56 +91,15 @@ subroutine CURVE_PARAM(th, kbod, xp, yp, xdot, ydot, xddot, yddot)
             sn = dsin(th-thetax)
             a2 = (ai)**2
             b2 = (bi)**2
-            rnorm = dsqrt(b2*cs**2 + a2*sn**2)
-            radius = ai*bi/rnorm
-            rdot = -ai*bi*cs*sn*(-b2+a2)/rnorm**3
-            rddot =  -ai*bi*(2.d0*a2*b2*cs**2*sn**2                &
-                           +a2**2*cs**4 + a2*b2-a2**2+b2**2*cs**4  &
-                           -2.d0*b2**2*cs**2)/rnorm**5
-            xp = radius*dcos(th)
-            yp = radius*dsin(th)
+            xp = ai*dcos(th)
+            yp = bi*dsin(th)
 
             cs = dcos(th)
             sn = dsin(th)
-            xdot = rdot*cs - radius*sn
-            ydot = rdot*sn + radius*cs
-            xddot = rddot*cs - 2.d0*rdot*sn - radius*cs
-            yddot = rddot*sn + 2.d0*rdot*cs - radius*sn
-           elseif (N.lt.0) then
-            R = ai
-            anu = bi
-            den = (1.d0-2.d0*anu*dcos(2.d0*th)+anu**2)  &
-                 *dsqrt(1.d0+anu**2)
-            ddot = 4.d0*anu*dsin(2.d0*th)*dsqrt(1.d0+anu**2)
-            dddot = 8.d0*anu*dcos(2.d0*th)*dsqrt(1.d0+anu**2)
-            xp = (1.d0-anu**2)*(1.d0-anu)*R*dsqrt(2.d0)*dcos(th)/den
-            yp = (1.d0-anu**2)*(1.d0+anu)*R*dsqrt(2.d0)*dsin(th)/den
-            xdot = -(1.d0-anu**2)*(1.d0-anu)*R*dsqrt(2.d0)*dsin(th)/den  &
-                   -xp*ddot/den            
-            xddot = -xp   &
-                    +(1.d0-anu**2)*(1.d0-anu)*R*dsqrt(2.d0)  &
-                                  *dsin(th)*ddot/den**2   &
-                    - xdot*ddot/den - xp*dddot/den    &
-                    + xp*ddot**2/den**2
-            ydot = (1.d0-anu**2)*(1.d0+anu)*R*dsqrt(2.d0)*dcos(th)/den  &
-                   -yp*ddot/den
-            yddot = -yp  &
-                    -(1.d0-anu**2)*(1.d0+anu)*R*dsqrt(2.d0)  &
-                                  *dcos(th)*ddot/den**2  &
-                    - ydot*ddot/den - yp*dddot/den   &
-                    + yp*ddot**2/den**2 
-           else
-            eps = bi
-            cs = dcos(th)
-            sn = dsin(th)
-            snn = dsin(N*th)
-            csn = dcos(N*th)
-            xp = ai*cs + bi*csn
-            yp = ai*sn - bi*snn
-            xdot = -ai*sn - N*bi*snn
-            xddot = -ai*cs - N**2*bi*csn
-            ydot = ai*cs - N*bi*csn
-            yddot = -ai*sn + N**2*bi*snn
+            xdot = -1.d0*ai*sn
+            ydot = bi*cs
+            xddot = -1.d0*ai*cs
+            yddot = -1.d0*bi*sn
          end if
 
 end subroutine CURVE_PARAM
@@ -292,14 +252,14 @@ subroutine BAD_DOMAIN_BNDRY()
              else
                theta = ibox*alpha_bad - 0.5d0*eye*alpha_bad
             end if
-            z0_box(ibox) = zf(1)/nd
+            z0_box(kbod+1,ibox) = zf(1)/nd
             do kmode = 1, nd/2 - 1
-               z0_box(ibox) = z0_box(ibox) &
+               z0_box(kbod+1,ibox) = z0_box(kbod+1,ibox) &
                                 + zf(kmode+1)*cdexp(eye*kmode*theta)/nd
-               z0_box(ibox) = z0_box(ibox) &
+               z0_box(kbod+1,ibox) = z0_box(kbod+1,ibox) &
                                 + zf(nd-kmode+1)*cdexp(-eye*kmode*theta)/nd
             end do
-            call Z_PLOT(z0_box(ibox), 1, optionsb, 32)
+            call Z_PLOT(z0_box(kbod+1,ibox), 1, optionsb, 32)
          end do
 !
 ! now use the Fourier coefficients to calculate the contours of the bad region

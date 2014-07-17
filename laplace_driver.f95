@@ -50,7 +50,7 @@ program LAPLACE_2D
    
 !
 ! Get target points
-   if (debug) call GET_TARGETS(ntar, z_tar)
+  ! if (debug) call GET_TARGETS(ntar, z_tar)
    
 !
 ! Set boundary conditions
@@ -69,7 +69,7 @@ program LAPLACE_2D
    call GET_CLOSEEVAL_SOL_GRID(ugrd_bad,umin_bad,umax_bad)
 ! Check solution at target points
    if (debug) then
-      call GET_SOL_TAR(ntar, z_tar, mu, A_log, u_tar)
+    !  call GET_SOL_TAR(ntar, z_tar, mu, A_log, u_tar)
       call CHECK_ERROR_GRID(i_grd, x_grd, y_grd, u_grd, umin, umax)
 	  call CHECK_ERROR_CLOSEEVAL_GRID(ugrd_bad,umin_bad, umax_bad)
    end if
@@ -100,7 +100,7 @@ subroutine INITIALIZE(debug)
 !
 ! initialize number of holes and points per hole
       k0 = 0
-      k = 0
+      k = 1
       nd = 250
       bounded = k0==0
       print *, 'bounded = ', bounded
@@ -160,9 +160,15 @@ subroutine INIT_HOLE_GEO()
    implicit none
    
       ak(1) = 1.d0
-      bk(1) = 0.d0
+      bk(1) = 1.d0
       ncyc(1) = 0
       zk(1) = dcmplx(0.d0, 0.0d0)
+
+	  ak(2) = 0.25d0
+      bk(2) = 0.25d0
+      ncyc(2) = 0
+      zk(2) = dcmplx(0.5d0, 0.d0)
+
      
 end subroutine INIT_HOLE_GEO
 
@@ -460,7 +466,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(ugrd_bad, umin_bad, umax_bad)
 !					end if
 !				end do			
 				zpoint = zgrd_bad(ipoint)
-				z0 = z0_box(ibox)
+				z0 = z0_box(kbod+1,ibox)
 				ugrd_bad(ipoint) = 0.d0
 				do im = 1, p
 					ugrd_bad(ipoint) = ugrd_bad(ipoint) + &

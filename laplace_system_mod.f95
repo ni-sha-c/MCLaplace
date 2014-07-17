@@ -78,7 +78,7 @@ subroutine SOLVE (rhs, soln, mu, A_log)
 !  igwork(4) = 0 - no preconditioner
 !  igwork(4) < 0 - preconditioner on the left (the only option here!)
 !  igwork(4) > 0 - preconditioner on the right
-      igwork(4) = -1
+      igwork(4) = 0
 
 !  provide initial guess soln
       do i = 1, norder
@@ -88,10 +88,10 @@ subroutine SOLVE (rhs, soln, mu, A_log)
 !  factor preconditioner
       if (igwork(4) < 0) then  
          t0 = etime(timep)
-         if ((bounded) .and. (dirichlet)) then  
-            call SCHUR_FACTOR_DIR_BNDED(schur, ipvtbf)
-         end if
-         t1 = etime(timep)
+        ! if ((bounded) .and. (dirichlet)) then  
+          !  call SCHUR_FACTOR_DIR_BNDED(schur, ipvtbf)
+        ! end if
+        ! t1 = etime(timep)
          print *, 'Time in factoring preconditioner = ', t1 - t0
       end if
       
@@ -167,15 +167,15 @@ subroutine SCHUR_FACTOR_DIR_BNDED(schur, ipvtbf)
    
       print *, '** In Preconditioner factoring routine  **'
 
-      istart = nd
-      do ibod = 1, k
-         do kbod = 1, k
+      istart = 0
+      do ibod = k0, k
+         do kbod = k0, k
             sum1 = 0.d0
             do i = 1, nd
                sum1 = sum1 &
                       + dlog(cdabs(z(istart+i) - zk(kbod + 1 - k0)))
             end do
-            schur(ibod, kbod) = sum1
+            schur(ibod+1, kbod+1) = sum1
          end do
          istart = istart + nd
       end do
@@ -672,7 +672,7 @@ subroutine BUILD_BARNETT (mu)
 				do ipoint = 1,m
 					inum = kbod*m + ipoint
 					zcauchy = mu_res(inum)*dz_res(inum)/ &
-						((z_res(inum) - z0_box(ibox))**j)
+						((z_res(inum) - z0_box(kbod+1,ibox))**j)
 					zcauchy = hres*zcauchy*z2pii
 					cm(kbod+1, ibox, j) = cm(kbod+1, ibox, j) + &
 					zcauchy
