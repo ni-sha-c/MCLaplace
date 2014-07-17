@@ -100,7 +100,7 @@ subroutine INITIALIZE(debug)
 !
 ! initialize number of holes and points per hole
       k0 = 0
-      k = 3
+      k = 0
       nd = 250
       bounded = k0==0
       print *, 'bounded = ', bounded
@@ -159,96 +159,14 @@ subroutine INIT_HOLE_GEO()
    use geometry_mod, only: k0, k, ak, bk, ncyc, zk
    implicit none
    
-      ak(1) = 2.d0
-      bk(1) = 1.8d0
+      ak(1) = 1.d0
+      bk(1) = 0.d0
       ncyc(1) = 0
       zk(1) = dcmplx(0.d0, 0.0d0)
-      
-      ak(2) = 0.5d0
-      bk(2) = 0.3d0
-      ncyc(2) = 0
-      zk(2) = dcmplx(-0.75d0, 0.0d0)
-
-      ak(3) = 0.1d0
-      bk(3) = 0.2d0
-      ncyc(3) = 0
-      zk(3) = dcmplx(0.75d0, 0.0d0)
-      
-      ak(4) = 0.1d0
-      bk(4) = 0.05d0
-      ncyc(4) = 0
-      zk(4) = dcmplx(0.0d0, 0.75d0)
-      
+     
 end subroutine INIT_HOLE_GEO
 
    
-!----------------------------------------------------------------------
-
-subroutine GET_TARGETS(ntar, z_tar)
-!
-! Gets a small number of target points in the domain for checking accuracy
-! Inputs:
-!   ntar: number of target points
-! Returns:
-!   z_tar: location of target points in complex plain
-!
-   use geometry_mod, only: pi, k0, k, zk, ak, bk, Z_PLOT, xmin, xmax, &
-                           ymin, ymax
-   implicit none
-   integer, intent(in) :: ntar
-   complex(kind=8), intent(out) :: z_tar(ntar)
-! local
-   integer :: i
-   real(kind=8) :: dth, theta, a_tar, b_tar
-   character(32) :: options
-   complex(kind=8) :: z_centre, z_corner
-   
-      dth = 2.d0*pi/ntar
-
-      if ( (k0==0) .and. (k==0) ) then
-         a_tar = 0.5d0*ak(1)
-         b_tar = 0.5d0*bk(1)
-         z_centre = zk(1)
-      elseif ( (k0==0) .and. (k==1) ) then
-         a_tar = 0.5d0*(ak(1) + ak(2))
-         b_tar = 0.5d0*(bk(1) + bk(2))
-         z_centre = zk(1)
-      elseif ( (k0==1) .and. (k==1) ) then
-         a_tar = 2.d0*max(ak(1), bk(1))
-         b_tar = a_tar
-         z_centre = zk(1)
-      elseif (k0 == 1) then
-         z_centre = 0.5d0*dcmplx(xmin + xmax, ymin + ymax)
-         z_corner = dcmplx(xmax, ymax)
-         a_tar = cdabs(z_corner - z_centre)
-         b_tar = a_tar   
-      else
-         print *, 'Cannot guarantee target points for this geometry'
-         print *, 'They must be user supplied in routine GET_TARGETS'
-         print *, 'Errors in solution check may result'
-         z_centre = zk(1)
-         a_tar = 0.8 * ak(1)
-         b_tar = 0.8 * bk(1)
-      end if
-      
-      do i = 1, ntar
-         theta = dth*(i-1.d0)
-         z_tar(i) = z_centre + dcmplx(a_tar*dcos(theta), &
-                                      b_tar*dsin(theta))
-      end do
-      
-      call PRIN2(' z_tar = *', z_tar, 2*ntar)
-      
-! dump out for plotting
-      open (unit = 21, file = 'mat_plots/target_points.m', &
-            status = 'unknown')
-      options = '''r*'''
-      call Z_PLOT( z_tar, ntar, options, 21)
-      close(21)
-      
-end subroutine GET_TARGETS
-!----------------------------------------------------------------------
-
 subroutine GET_BCS(debug, rhs)
 
 ! Constructs right hand side of integral equation
@@ -351,60 +269,7 @@ real(kind=8) function U_EXACT(bounded, z)
       end if
 
 end function U_EXACT
-
-!----------------------------------------------------------------------
-
-subroutine GET_SOL_TAR(ntar, z_tar, mu, A_log, u_tar)
-
-! Calculate solution at target points and check accuracy
-! Inputs:
-!   ntar: number of target points
-!   z_tar: location of target points in complex plane
-!   mu: density of integral operator
-!   A_log: strength of log sources
-!   bounded: logical whether domain is bounded or not
-! Returns:
-!   u_tar: solution
-
-   use geometry_mod, only: k0, k, nd, nbk, pi, h, eye, z, dz, bounded
-   implicit none
-   integer, intent(in) :: ntar
-   real(kind=8), intent(in) :: mu(nbk), A_log(k)
-   complex(kind=8), intent(in) :: z_tar(nbk)
-   real(kind=8), intent(out) :: u_tar(nbk)
-!
-! local
-   real(kind=8) :: err, u_ex, U_EXACT
-   integer :: i, itar
-   complex(kind=8) :: zcauchy, z2pii 
-
-      z2pii = 1.d0/(2.d0*pi*eye)
-
-      err = 0.d0
-      
-      do itar = 1, ntar
-      
-         u_tar(itar) = 0.d0
-         
-         do i = 1, nbk
-            zcauchy = mu(i)*dz(i)/(z(i) - z_tar(itar))
-            zcauchy = h*zcauchy*z2pii
-            u_tar(itar) = u_tar(itar) + dreal(zcauchy)
-         end do
-         
-         u_ex = U_EXACT(bounded, z_tar(itar))
-         err = max(err,dabs(u_ex-u_tar(itar)))
-      !!!   call PRINF('itar = *', itar, 1)
-      !!!   call PRIN2('   u_exact = *', u_ex, 1)
-      !!!   call PRIN2('   u_tar = *', u_tar(itar), 1)
-      !!!   call PRIN2('   diff = *', u_ex-u_tar(itar), 1)
-         
-      end do
-      call PRIN2 ('Max error at target points = *', err, 1)
-
-end subroutine GET_SOL_TAR
-
-!----------------------------------------------------------------------
+!-----------------------------------------------------------------------------
 
 subroutine GET_SOL_GRID(mu, A_log, i_grd, x_grd, y_grd, u_grd, umin, umax)
 

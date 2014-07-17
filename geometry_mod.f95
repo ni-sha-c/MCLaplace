@@ -77,12 +77,12 @@ subroutine CURVE_PARAM(th, kbod, xp, yp, xdot, ydot, xddot, yddot)
    real(kind=8), intent(in) :: th
    integer, intent(in) :: kbod
    real(kind=8), intent(out) :: xp, yp, xdot, ydot, xddot, yddot
-   real(kind=8) :: ai, bi, N, a2, b2, rnorm, radius, rdot, rddot, R, &
+   real(kind=8) :: ai, a2, b2, rnorm, radius, rdot, rddot, R, &
                    anu, den, ddot, dddot, cs, sn, eps, snn, csn, thetax
 
          N = ncyc(kbod+1-k0)
          ai = ak(kbod+1-k0)
-         bi = bk(kbod+1-k0)
+         
          thetax = 0.d0
          
          if (N.eq.0) then
