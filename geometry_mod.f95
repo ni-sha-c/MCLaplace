@@ -381,8 +381,8 @@ subroutine BUILD_CLOSEEVAL_GRID()
       open(unit = 33, file = 'mat_plots/ygrid_bad.m')
 
    
-      call X_DUMP(xgrd_bad,(k-k0)*nr*ntheta, 32)
-      call X_DUMP(ygrd_bad, (k-k0)*nr*ntheta,33)
+      call X_DUMP(xgrd_bad,(k-k0+1)*nr*ntheta, 32)
+      call X_DUMP(ygrd_bad, (k-k0+1)*nr*ntheta,33)
 
   
       close(32)
