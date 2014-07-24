@@ -49,7 +49,8 @@ module geometry_mod
 !
 ! resampled domain variables
    integer, parameter :: ibeta = 4, p = 20
-   real(kind=8) :: x_res(ibeta*nmax), y_res(ibeta*nmax), ds_res(ibeta*nmax)
+   integer ::  ndres, nbkres
+   real(kind=8) :: hres,x_res(ibeta*nmax), y_res(ibeta*nmax), ds_res(ibeta*nmax)
    complex(kind=8) :: z_res(ibeta*nmax), dz_res(ibeta*nmax)
 !
 ! Grid variables
@@ -418,11 +419,11 @@ subroutine RESAMPLE_DOMAIN ()
       istart = 0
       istartr = 0
       do kbod = k0, k
-         call FINTERC (z(istart+1), z_res(istartr+1), nd, ibeta*nd, work)
-         call FINTERC (dz(istart+1), dz_res(istartr+1), nd, ibeta*nd, work)
+         call FINTERC (z(istart+1), z_res(istartr+1), nd, ndres, work)
+         call FINTERC (dz(istart+1), dz_res(istartr+1), nd, ndres, work)
          call Z_PLOT(z_res(istartr+1), nd*ibeta, options, 31)
          istart = istart + nd
-         istartr = istartr + ibeta*nd
+         istartr = istartr + ndres
       end do
       close(31)
          
