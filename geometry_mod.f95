@@ -41,6 +41,7 @@ module geometry_mod
 ! trapezoid rule breaks down
    real(kind=8) :: x_bad(nmax), y_bad(nmax), ds_bad(nmax)
    complex(kind=8) :: z_bad(nmax), dz_bad(nmax), z0_box(kmax,nmax/5)
+
 !
 ! Pointer arrays to points in grid that are in "close" region, and which 
 ! contour they are close to
@@ -50,9 +51,12 @@ module geometry_mod
 ! resampled domain variables
    integer, parameter :: ibeta = 4, p = 20
    integer ::  ndres, nbkres
-   real(kind=8) :: hres,x_res(ibeta*nmax), y_res(ibeta*nmax), ds_res(ibeta*nmax)
+   real(kind=8) :: g, hres, x_res(ibeta*nmax), y_res(ibeta*nmax), & 
+				  ds_res(ibeta*nmax)
    complex(kind=8) :: z_res(ibeta*nmax), dz_res(ibeta*nmax)
-!
+   integer :: inear_box(nmax/5, ibeta*nmax)	
+
+
 ! Grid variables
    integer :: nx, ny, i_grd(ngrd_max), nr, ntheta
    real(kind=8) :: x_grd(ngrd_max), y_grd(ngrd_max)
@@ -633,6 +637,32 @@ subroutine BUILD_GRID(i_grd, x_grd, y_grd)
 end subroutine BUILD_GRID
 
 !----------------------------------------------------------------------
+
+subroutine POPULATE_INEAR_BOX()
+
+	!local variables
+	implicit none
+	integer :: nb,ibox, kbod, ipoint, istart, inum
+		
+	nb = nd/5
+
+	do ibox =  1, nb
+		istart = 1
+		do kbod = k0, k
+			do ipoint = 1, ndres
+				inum = kbod*ndres + ipoint
+				if(cdabs(z_res(inum) - z0_box(kbod, ibox)).le.g) then
+					inear_box(ibox, istart) = inum
+					istart = istart + 1
+				end if
+			end do   
+		end do
+	end do
+
+end subroutine POPULATE_INEAR_BOX
+
+
+!------------------------------------------------------------------------
 
 subroutine ORGANIZE_CLOSE_POINTS (i_grd)
 !
