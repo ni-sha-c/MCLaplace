@@ -573,7 +573,7 @@ subroutine BUILD_GRID(i_grd, x_grd, y_grd)
     
          if (ier.eq.4) then
             print *, 'ERROR IN FMM: Cannot allocate tree workspace'
-            stop
+           stop
          else if(ier.eq.8) then
             print *, 'ERROR IN FMM: Cannot allocate bulk FMM workspace'
             stop

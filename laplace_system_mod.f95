@@ -659,7 +659,7 @@ subroutine BUILD_BARNETT (mu,mu_res)
 ! Calculate the coefficients c_m
 
 
-	z2pii = -1.d0/(2.d0*pi*eye) 
+	z2pii = 1.d0/(2.d0*pi*eye) 
 	do kbod = k0, k
 		do ibox = 1, nb
 			do j = 1, p		
@@ -673,8 +673,8 @@ subroutine BUILD_BARNETT (mu,mu_res)
 
 	do kbod = k0, k
 		do ibox = 1,nb
-			!print 1001, kbod, ibox, llimit, rlimit
-			!1001 format(I3, I5, I5, I5)
+		!	print 1001, kbod, ibox, llimit, rlimit
+		!	1001 format(I3, I5, I5, I5)
 			do j = 1, p	
 				if(llimit.gt.rlimit) then	
 					do jpoint = rlimit, llimit
@@ -714,7 +714,7 @@ subroutine BUILD_BARNETT (mu,mu_res)
 
 				else
 					print *,"Something went wrong in finding boundary points &
-							close to box!"
+							close to box!", ibox
 				end if
 			end do  
 			llimit = mod(llimit + fac + ndres, ndres)
