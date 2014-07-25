@@ -49,7 +49,7 @@ module geometry_mod
               ic_pnt(kmax+1) 
 !
 ! resampled domain variables
-   integer, parameter :: ibeta = 4, p = 20
+   integer, parameter :: ibeta = 4, p = 20, ialpha = 10
    integer ::  ndres, nbkres
    real(kind=8) :: g, hres, x_res(ibeta*nmax), y_res(ibeta*nmax), & 
 				  ds_res(ibeta*nmax)

@@ -603,15 +603,17 @@ subroutine BUILD_BARNETT (mu,mu_res)
 ! HELMHOLTZ PROBLEMS ON ANALYTIC PLANAR DOMAINS
 ! SIAM J. Sci. Stat. Comput. 2012
 ! 
-   use geometry_mod, only: k0, k, nd, nbk, z_res, dz_res, ibeta, XY_PLOT, pi, &
-						   zgrd_bad,nr, ntheta, z0_box, eye, nbkres, ndres, hres
+   use geometry_mod, only: k0, k, nd, nbk, z_res, dz_res, ibeta, &
+						   XY_PLOT, pi, zgrd_bad,nr, ntheta, &
+						   z0_box, eye, nbkres, ndres, hres, ialpha
    implicit none
    real(kind=8), intent(in) :: mu(nbk)
    real(kind=8), intent(out) :: mu_res(ibeta*nbk)
 !   real(kind=8), intent(out) :: cm(k0:k,nd/5,p)
 !
 ! local variables
-   integer :: i, kbod, istart, istartr, nb, ipoint, im, ibox, inum, j
+   integer :: i, kbod, istart, istartr, nb, ipoint, &
+			  im, ibox, inum, j, inum_near
    real(kind=8) :: alpha(nd), alpha_res(ndres)
    complex(kind=8) :: zmu(nd), zmu_res(ndres), work(3*nd+3*ndres+20), &
 					  zcauchy, z2pii
@@ -668,7 +670,7 @@ subroutine BUILD_BARNETT (mu,mu_res)
 	do kbod = k0, k
 		do ibox = 1,nb
 			do j = 1, p		
-				do ipoint = 1, nbkres
+				do ipoint = 1, inum_near
 					zcauchy = mu_res(ipoint)*dz_res(ipoint)/ &
 						((z_res(ipoint) - z0_box(kbod+1,ibox))**j)
 					zcauchy = hres*zcauchy*z2pii
