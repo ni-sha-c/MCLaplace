@@ -595,7 +595,8 @@ subroutine MATVEC_DEBUG(N, XX, YY, NELT, IA, JA, A, ISYM)
 
 end subroutine MATVEC_DEBUG
 
-!----------------------------------------------------------------------
+
+!-------------------------------------------------------------------------
 
 subroutine BUILD_BARNETT (mu,mu_res)
 ! Reference:
@@ -605,7 +606,8 @@ subroutine BUILD_BARNETT (mu,mu_res)
 ! 
    use geometry_mod, only: k0, k, nd, nbk, z_res, dz_res, ibeta, &
 						   XY_PLOT, pi, zgrd_bad,nr, ntheta, &
-						   z0_box, eye, nbkres, ndres, hres, ialpha
+						   z0_box, eye, nbkres, ndres, &
+						   hres, ialpha, GET_NEAR_LIMITS
    implicit none
    real(kind=8), intent(in) :: mu(nbk)
    real(kind=8), intent(out) :: mu_res(ibeta*nbk)
@@ -613,7 +615,7 @@ subroutine BUILD_BARNETT (mu,mu_res)
 !
 ! local variables
    integer :: i, kbod, istart, istartr, nb, ipoint, &
-			  im, ibox, inum, j, inum_near
+			  im, ibox, inum, j, llimit, rlimit, fac, jpoint
    real(kind=8) :: alpha(nd), alpha_res(ndres)
    complex(kind=8) :: zmu(nd), zmu_res(ndres), work(3*nd+3*ndres+20), &
 					  zcauchy, z2pii
@@ -666,21 +668,57 @@ subroutine BUILD_BARNETT (mu,mu_res)
 		end do
 	end do
 
+  	call GET_NEAR_LIMITS(1, llimit, rlimit)
+	fac = ibeta*5
 
 	do kbod = k0, k
 		do ibox = 1,nb
-			do j = 1, p		
-				do ipoint = 1, inum_near
-					zcauchy = mu_res(ipoint)*dz_res(ipoint)/ &
+			!print 1001, kbod, ibox, llimit, rlimit
+			!1001 format(I3, I5, I5, I5)
+			do j = 1, p	
+				if(llimit.gt.rlimit) then	
+					do jpoint = rlimit, llimit
+						ipoint = kbod*ndres + jpoint
+						zcauchy = mu_res(ipoint)*dz_res(ipoint)/ &
 						((z_res(ipoint) - z0_box(kbod+1,ibox))**j)
-					zcauchy = hres*zcauchy*z2pii
-					!if(kbod .eq. k0) then
-					!	zcauchy = -1.d0*zcauchy
-					!end if
-					cm(kbod+1, ibox, j) = cm(kbod+1, ibox, j) + &
-					zcauchy
-				end do
+						zcauchy = hres*zcauchy*z2pii
+						!if(kbod .eq. k0) then
+						!	zcauchy = -1.d0*zcauchy
+						!end if
+						cm(kbod+1, ibox, j) = cm(kbod+1, ibox, j) + &
+						zcauchy
+					end do
+				else if(rlimit.gt.llimit) then
+					do jpoint = rlimit, ndres
+						ipoint = kbod*ndres + jpoint
+						zcauchy = mu_res(ipoint)*dz_res(ipoint)/ &
+						((z_res(ipoint) - z0_box(kbod+1,ibox))**j)
+						zcauchy = hres*zcauchy*z2pii
+						!if(kbod .eq. k0) then
+						!	zcauchy = -1.d0*zcauchy
+						!end if
+						cm(kbod+1, ibox, j) = cm(kbod+1, ibox, j) + &
+						zcauchy
+					end do
+					do jpoint = 1, llimit
+						ipoint = kbod*ndres + jpoint
+						zcauchy = mu_res(ipoint)*dz_res(ipoint)/ &
+						((z_res(ipoint) - z0_box(kbod+1,ibox))**j)
+						zcauchy = hres*zcauchy*z2pii
+						!if(kbod .eq. k0) then
+						!	zcauchy = -1.d0*zcauchy
+						!end if
+						cm(kbod+1, ibox, j) = cm(kbod+1, ibox, j) + &
+						zcauchy
+					end do
+
+				else
+					print *,"Something went wrong in finding boundary points &
+							close to box!"
+				end if
 			end do  
+			llimit = mod(llimit + fac + ndres, ndres)
+			rlimit = mod(rlimit + fac + ndres, ndres) 
 		end do
 	end do
  

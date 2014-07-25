@@ -88,7 +88,7 @@ subroutine INITIALIZE(debug)
 !   dirichlet :: true if Dirichlet BVP, false if Neumann
    use geometry_mod, only: pi, eye, kmax, npmax, nbk, k0, k, nd, h, &
                            bounded, nx, ny, ngrd_max, nr, ntheta, &
-						   ndres, nbkres, hres, ibeta
+						   ndres, nbkres, hres, ibeta, ig, g
    use laplace_system_mod, only: dirichlet
    implicit none
    logical, intent(out) :: debug
@@ -102,7 +102,7 @@ subroutine INITIALIZE(debug)
 ! initialize number of holes and points per hole
       k0 = 0
       k = 1
-      nd = 1000
+      nd = 100
       bounded = k0==0
       print *, 'bounded = ', bounded
 !
@@ -147,10 +147,11 @@ subroutine INITIALIZE(debug)
 	  ndres = ibeta*nd
 	  nbkres = (k + 1 -k0)*ndres
 	  hres = 2.d0*pi/ndres
+	  ig = 10
 
 ! initialize close evaluation grid
 	  nr = 5
-	  ntheta = 500
+	  ntheta = 50
 end subroutine INITIALIZE
 
 !----------------------------------------------------------------------
@@ -443,7 +444,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
                            zgrd_bad, xgrd_bad, ygrd_bad, z0_box, &
 						   nx, ny, nr, ntheta, ndres, nbkres, & 
 						   z_res, dz_res, hres, ibeta,zk, &
-						   X_DUMP 
+						   X_DUMP, GET_NEAR_LIMITS 
 
 
    use laplace_system_mod, only: cm, p
@@ -456,7 +457,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 
 ! local variables
    integer :: i, j, ipoint, kbod,nb, im, ibox(nd), &
-			  iibox, istart
+			  iibox, istart, llimit, rlimit, icl, jcl
    complex(kind=8):: zpoint, z0
    real(kind=8):: magdz
 
@@ -468,7 +469,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
    complex(kind=8) :: charge(nbkres), dipstr(nbkres), pot(nbkres), grad(2,nbkres), &
                       hess(3,nbkres), pottarg((k-k0+1)*nr*ntheta), & 
 				      gradtarg(2, (k-k0+1)*nr*ntheta), &
-                      hesstarg(3, (k-k0+1)*nr*ntheta)
+                      hesstarg(3, (k-k0+1)*nr*ntheta), zcauchy, z2pii
 
 	
 	nb = nd/5
@@ -555,10 +556,11 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
                   ugrd_bad(i) = ugrd_bad(i) & 
                     + A_log(kbod)*dlog(cdabs(zgrd_bad(i) - zk(kbod + 1 - k0)))
                end do
-              umax_bad = max(umax_bad, ugrd_bad(i))
-              umin_bad = min(umin_bad, ugrd_bad(i))
                
      end do
+
+
+	z2pii = 1.d0/(2.d0*pi*eye)
       
 	do kbod = k0, k
 		do i = 1, nr
@@ -571,14 +573,44 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 					
 				zpoint = zgrd_bad(ipoint)
 				z0 = z0_box(kbod+1,ibox(j))
-				ugrd_bad(ipoint) = 0.d0
+			!	ugrd_bad(ipoint) = 0.d0
 				do im = 1, p
 					ugrd_bad(ipoint) = ugrd_bad(ipoint) + &
 						dreal(cm(kbod+1, ibox(j), im)*((zpoint - z0)**(im-1)))	
 						
 				end do
 			    ugrd_bad(ipoint) = -ugrd_bad(ipoint)
-
+				call GET_NEAR_LIMITS(ibox(j), llimit, rlimit)
+			 	if(llimit.gt.rlimit) then 
+					do icl = rlimit, llimit
+						jcl = kbod*ndres + icl 
+						zcauchy = mu_res(jcl)*dz_res(jcl)/ &
+						(z_res(jcl) - zpoint)
+						zcauchy = hres*zcauchy*z2pii
+						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
+									- dreal(zcauchy)
+					end do
+				else if(rlimit.gt.llimit) then
+					do icl = rlimit, ndres
+						jcl = kbod*ndres + icl
+					 	zcauchy = mu_res(jcl)*dz_res(jcl)/ &
+						(z_res(jcl) - zpoint)
+						zcauchy = hres*zcauchy*z2pii
+						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
+									- dreal(zcauchy)
+					end do
+					do icl = 1, llimit
+						jcl = kbod*ndres + icl
+						zcauchy = mu_res(jcl)*dz_res(jcl)/ &
+						(z_res(jcl) - zpoint)
+						zcauchy = hres*zcauchy*z2pii
+						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
+									- dreal(zcauchy)
+					end do
+				else
+					print *, "something went wrong in finding points &
+						close to a box"
+				end if	
 
 				umin_bad = min(umin_bad, ugrd_bad(ipoint))
 				umax_bad = max(umax_bad, ugrd_bad(ipoint))

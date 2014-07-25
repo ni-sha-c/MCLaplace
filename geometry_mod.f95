@@ -50,7 +50,7 @@ module geometry_mod
 !
 ! resampled domain variables
    integer, parameter :: ibeta = 4, p = 20, ialpha = 10
-   integer ::  ndres, nbkres
+   integer ::  ndres, nbkres, ig
    real(kind=8) :: g, hres, x_res(ibeta*nmax), y_res(ibeta*nmax), & 
 				  ds_res(ibeta*nmax)
    complex(kind=8) :: z_res(ibeta*nmax), dz_res(ibeta*nmax)
@@ -399,6 +399,45 @@ subroutine BUILD_CLOSEEVAL_GRID()
 end subroutine BUILD_CLOSEEVAL_GRID
 
 !----------------------------------------------------------------------
+
+subroutine GET_NEAR_LIMITS(ibox, llimit, rlimit)
+
+!temporarily assuming equal sized boxes.
+! marks points within ig*boxradius of the center of ibox.	
+
+	implicit none
+	integer, intent(in):: ibox
+	integer, intent(out):: llimit, rlimit
+	
+! local variables
+	integer:: llimit_box, rlimit_box, nlimit_box, nb, fac
+
+	nlimit_box = ig/2
+	nb = nd/5
+	fac = 5*ibeta
+
+	rlimit_box = mod(ibox - nlimit_box + nb, nb)	 
+	llimit_box = mod(ibox + nlimit_box + nb, nb)
+
+	if(rlimit_box.eq.0) then
+		rlimit_box = nb
+	end if
+	
+	if(llimit_box.eq.0) then
+		llimit_box = nb
+	end if
+
+	if(mod(ig, 2).eq.0) then
+		rlimit = (rlimit_box - 1)*fac + fac/2
+		llimit = (llimit_box - 1)*fac + fac/2
+	else
+		rlimit = (rlimit_box - 1)*fac + 1
+		llimit = llimit_box*fac
+	end if 	
+			
+end subroutine GET_NEAR_LIMITS
+
+!------------------------------------------------------------------
 
 subroutine RESAMPLE_DOMAIN ()
 !
