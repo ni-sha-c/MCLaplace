@@ -101,7 +101,7 @@ subroutine INITIALIZE(debug)
 !
 ! initialize number of holes and points per hole
       k0 = 0
-      k = 1
+      k = 0
       nd = 250
       bounded = k0==0
       print *, 'bounded = ', bounded
@@ -172,14 +172,15 @@ subroutine INIT_HOLE_GEO()
       ncyc(1) = 0
       zk(1) = dcmplx(0.d0, 0.0d0)
 
-	  ak(2) = 0.25d0
-      bk(2) = 0.25d0
-      ncyc(2) = 0
-      zk(2) = dcmplx(0.5d0, 0.d0)
+!	  ak(2) = 0.25d0
+!      bk(2) = 0.25d0
+!      ncyc(2) = 0
+!      zk(2) = dcmplx(0.5d0, 0.d0)
 
      
 end subroutine INIT_HOLE_GEO
 
+!---------------------------------------------------------------------
    
 subroutine GET_BCS(debug, rhs)
 
@@ -465,7 +466,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
    integer :: iprec, ifcharge, ifdipole, ifpot, ifgrad, ifhess, ntarget, &
               ifpottarg, ifgradtarg, ifhesstarg, ier
    real(kind=8) :: source(2,nbkres), dipvec(2,nbkres),   & 
-					target(2,(k-k0+1)*nr*ntheta)
+					target(2,(k-k0+1)*nr*ntheta), targ(2,2)
    complex(kind=8) :: charge(nbkres), dipstr(nbkres), pot(nbkres), grad(2,nbkres), &
                       hess(3,nbkres), pottarg((k-k0+1)*nr*ntheta), & 
 				      gradtarg(2, (k-k0+1)*nr*ntheta), &
@@ -580,8 +581,10 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 						dreal(cm(kbod+1, ibox(j), im)*((zpoint - z0)**(im-1)))	
 						
 				end do
-
+				targ(1,1) = xgrd_bad(ipoint)
+				targ(2,1) = ygrd_bad(ipoint)
 				call GET_NEAR_LIMITS(ibox(j), llimit, rlimit)
+				istart = 1
 			 	if(llimit.gt.rlimit) then 
 					do icl = rlimit, llimit
 						jcl = kbod*ndres + icl 
@@ -594,7 +597,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 				else if(rlimit.gt.llimit) then
 					do icl = rlimit, ndres
 						jcl = kbod*ndres + icl
-					 	zcauchy = mu_res(jcl)*dz_res(jcl)/ &
+				 	zcauchy = mu_res(jcl)*dz_res(jcl)/ &
 						(z_res(jcl) - zpoint)
 						zcauchy = hres*zcauchy*z2pii
 						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
@@ -602,7 +605,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 					end do
 					do icl = 1, llimit
 						jcl = kbod*ndres + icl
-						zcauchy = mu_res(jcl)*dz_res(jcl)/ &
+					zcauchy = mu_res(jcl)*dz_res(jcl)/ &
 						(z_res(jcl) - zpoint)
 						zcauchy = hres*zcauchy*z2pii
 						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
@@ -611,9 +614,8 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 				else
 					print *, "something went wrong in finding points &
 						close to a box"
-				end if	
-
-				umin_bad = min(umin_bad, ugrd_bad(ipoint))
+				end if
+			umin_bad = min(umin_bad, ugrd_bad(ipoint))
 				umax_bad = max(umax_bad, ugrd_bad(ipoint))
 			end do			
 		end do
