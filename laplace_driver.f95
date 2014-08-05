@@ -575,11 +575,10 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 					
 				zpoint = zgrd_bad(ipoint)
 				z0 = z0_box(kbod+1,ibox(j))
-			!	ugrd_bad(ipoint) = 0.d0
+		
 				do im = 1, p
 					ugrd_bad(ipoint) = ugrd_bad(ipoint) + &
-						dreal(cm(kbod+1, ibox(j), im)*((zpoint - z0)**(im-1)))	
-						
+						dreal(cm(kbod+1, ibox(j), im)*((zpoint - z0)**(im-1)))			
 				end do
 				targ(1,1) = xgrd_bad(ipoint)
 				targ(2,1) = ygrd_bad(ipoint)
@@ -592,7 +591,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 						(z_res(jcl) - zpoint)
 						zcauchy = hres*zcauchy*z2pii
 						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
-									+ dreal(zcauchy)
+								- dreal(zcauchy)
 					end do
 				else if(rlimit.gt.llimit) then
 					do icl = rlimit, ndres
@@ -601,7 +600,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 						(z_res(jcl) - zpoint)
 						zcauchy = hres*zcauchy*z2pii
 						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
-									+ dreal(zcauchy)
+								- dreal(zcauchy)
 					end do
 					do icl = 1, llimit
 						jcl = kbod*ndres + icl
@@ -609,7 +608,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 						(z_res(jcl) - zpoint)
 						zcauchy = hres*zcauchy*z2pii
 						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
-									+ dreal(zcauchy)
+								- dreal(zcauchy)
 					end do
 				else
 					print *, "something went wrong in finding points &

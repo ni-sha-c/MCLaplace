@@ -676,7 +676,9 @@ subroutine BUILD_BARNETT (mu,mu_res)
 		!	print 1001, kbod, ibox, llimit, rlimit
 		!	1001 format(I3, I5, I5, I5)
 			istart = 0	
-			do j = 1, p	
+			do j = 1, p
+			!	print 199, ibox, llimit , rlimit
+			!	199 format(I5, I5, I5)	
 				if(llimit.gt.rlimit) then	
 					do jpoint = rlimit, llimit
 						ipoint = kbod*ndres + jpoint
@@ -720,7 +722,9 @@ subroutine BUILD_BARNETT (mu,mu_res)
 					print *,"Something went wrong in finding boundary points &
 							close to box!", ibox
 				end if
-				cm(kbod+1, ibox, j) = cm(kbod + 1, ibox, j)*ndres/istart
+				!cm(kbod+1, ibox, j) = cm(kbod + 1, ibox, j)*ndres/istart
+				!print 200, kbod+1, ibox, j, cm(kbod + 1,ibox,j)
+				!200 format(I5, I5, I5, E15.8, E15.8)
 			end do  
 			llimit = mod(llimit + fac + ndres, ndres)
 			rlimit = mod(rlimit + fac + ndres, ndres) 
