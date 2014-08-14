@@ -147,7 +147,7 @@ subroutine INITIALIZE(debug)
 	  ndres = ibeta*nd
 	  nbkres = (k + 1 -k0)*ndres
 	  hres = 2.d0*pi/ndres
-	  ig = 50
+	  ig = 10
 
 ! initialize number of boxes 
 	  nb = nd/4
@@ -466,19 +466,20 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
    real(kind=8):: magdz
 
 ! FMM work arrays
-!   integer :: iprec, ifcharge, ifdipole, ifpot, ifgrad, ifhess,  &
- !             ifpottarg, ifgradtarg, ifhesstarg, ier
-  ! real(kind=8) :: source(2,nbkres), dipvec(2,nbkres),   & 
-!					target(2,(k-k0+1)*nr*ntheta), targ(2,2)
- !  complex(kind=8) :: charge(nbkres), dipstr(nbkres), pot(nbkres), grad(2,nbkres), &
-  !                    hess(3,nbkres), pottarg((k-k0+1)*nr*ntheta), & 
-!				      gradtarg(2, (k-k0+1)*nr*ntheta), &
- !                     hesstarg(3, (k-k0+1)*nr*ntheta)
+   integer :: iprec, ifpot, ifgrad, ifhess,  &
+              ifpottarg, ifgradtarg, ifhesstarg, ier
+   real(kind=8) :: source(2,nbkres), & 
+					target(2,(k-k0+1)*nr*ntheta), targ(2,2)
+   complex(kind=8) :: dipstr(nbkres), pot(nbkres), grad(2,nbkres), &
+                      hess(3,nbkres), pottarg((k-k0+1)*nr*ntheta), & 
+				      gradtarg(2, (k-k0+1)*nr*ntheta), &
+                      hesstarg(3, (k-k0+1)*nr*ntheta)
 
 	
 	
 	umin_bad = 1.d10
 	umax_bad = -1.d10
+    z2pii = 1.d0/(2.d0*pi*eye)
 
 	 do j = 1, ntheta	
 	  	ibox(j) = -1
@@ -497,134 +498,76 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 !   Define grid target points
 
 	ntarget = (k - k0 + 1)*nr*ntheta
-!	do i = 1, ntarget  
- !              target(1, i) = xgrd_bad(i)
-  !             target(2, i) = ygrd_bad(i)
-   !            
-    !end do
+	do i = 1, ntarget  
+               target(1, i) = xgrd_bad(i)
+               target(2, i) = ygrd_bad(i)
+              
+    end do
 
     call PRINF (' Number of active points in the bad grid = *', ntarget, 1)
       
 !
 !   Assemble arrays for FMM call
 	
-   ! do i = 1, nbkres
-	!	 magdz = cdabs(dz_res(i))
-     !    source(1, i) = dreal(z_res(i))
-      !   source(2, i) = dimag(z_res(i))
-       !  dipvec(1,i) = dreal(-eye*dz_res(i))/magdz
-        ! dipvec(2,i) = dimag(-eye*dz_res(i))/magdz
-         !charge(i) = 0.d0
-        ! dipstr(i) = hres*mu_res(i)*magdz/(2.d0*pi)
-   ! end do
+    do i = 1, nbkres
+         source(1, i) = dreal(z_res(i))
+         source(2, i) = dimag(z_res(i))
+         dipstr(i) = -1.d0*hres*mu_res(i)*z2pii*dz_res(i)
+    end do
 
 ! set parameters for FMM routine lfmm2dparttarg
 	
-    !  iprec = 5   ! err < 10^-14
-     ! ifcharge = 0 ! no charges, only dipoles
-     ! ifdipole = 1
-     ! ifpot = 1
-     ! ifgrad = 0
-     ! ifhess = 0
-     ! ifpottarg = 1
-     ! ifgradtarg = 0
-     ! ifhesstarg = 0
+      iprec = 5   ! err < 10^-14
+      ifpot = 1
+      ifgrad = 0
+      ifhess = 0
+      ifpottarg = 1
+      ifgradtarg = 0
+      ifhesstarg = 0
       
 ! call FMM
 
-     ! call PRINI(0, 13)
-     ! call lfmm2dparttarg(ier, iprec, nbk, source, ifcharge, charge, &
-      !                    ifdipole, dipstr, dipvec, ifpot, pot, ifgrad,  &
-       !                   grad, ifhess, hess, ntarget, target, ifpottarg, &
-        !                  pottarg, ifgradtarg, gradtarg, ifhesstarg, hesstarg)
-    !  call PRINI(6, 13)
+      call PRINI(0, 13)
+      call zfmm2dparttarg(ier, iprec, nbkres, source, &
+                          dipstr, ifpot, pot, ifgrad,  &
+                          grad, ifhess, hess, ntarget, target, ifpottarg, &
+                          pottarg, ifgradtarg, gradtarg, ifhesstarg, hesstarg)
+      call PRINI(6, 13)
       
-     ! if (ier.eq.4) then
-      !   print *, 'ERROR IN FMM: Cannot allocate tree workspace'
-       !  stop
-     ! else if(ier.eq.8) then
-     !    print *, 'ERROR IN FMM: Cannot allocate bulk FMM workspace'
-     !    stop
-     ! else if(ier.eq.16) then
-     !    print *, 'ERROR IN FMM: Cannot allocate multipole expansion workspace' 
-     !    stop
-     ! end if
+      if (ier.eq.4) then
+         print *, 'ERROR IN FMM: Cannot allocate tree workspace'
+         stop
+      else if(ier.eq.8) then
+         print *, 'ERROR IN FMM: Cannot allocate bulk FMM workspace'
+         stop
+      else if(ier.eq.16) then
+         print *, 'ERROR IN FMM: Cannot allocate multipole expansion workspace' 
+         stop
+      end if
 	  
 ! For points far enough from boundary, unpack into grid
-      umax_bad = -1.d10
-      umin_bad = 1.d10
-
-	  z2pii = 1.d0/(2.d0*pi*eye)
-      
-      do i = 1, ntarget
-			zpoint = zgrd_bad(i)
-			ugrd_bad(i) = 0.d0
-			do jcl = 1, nbkres 
-   				zcauchy = mu_res(jcl)*dz_res(jcl)/ &
-							(z_res(jcl) - zpoint)
-				zcauchy = hres*zcauchy*z2pii
-				ugrd_bad(i) = ugrd_bad(i) &
-								+ dreal(zcauchy)               
-        	end do 
-      end do
-
-
-
-      
+   
+         
 	do kbod = k0, k
 		do i = 1, nr
 			do j = 1,ntheta
-				ipoint = (kbod - k0)*nr*ntheta + (i-1)*ntheta + j
-				!ibox = j/(ntheta/nb) + 1
-				!if(mod(j, ntheta/nb).eq.0) then
-				!	ibox = ibox - 1
-				!end if
-					
+				ipoint = (kbod - k0)*nr*ntheta + (i-1)*ntheta + j	
 				zpoint = zgrd_bad(ipoint)
 				z0 = z0_box(kbod - k0 + 1,ibox(j))	
+				ugrd_bad(ipoint) = dreal(pottarg(ipoint))
 				do im = 1, p
 					ugrd_bad(ipoint) = ugrd_bad(ipoint) + &
 						dreal(cm(kbod - k0 + 1, ibox(j), im)*((zpoint - z0)**(im-1)))			
 				end do
-			!	targ(1,1) = xgrd_bad(ipoint)
-			!	targ(2,1) = ygrd_bad(ipoint)
 			 	 
 				do icl = 1, n_neigh(kbod - k0 + 1, ibox(j))
 						jcl = neigh_boxes(kbod - k0 + 1, ibox(j), icl)
-				   	    magdz = cdabs(dz_res(jcl))
-       			!	    source(1, icl) = dreal(z_res(jcl))
-        		!	    source(2, icl) = dimag(z_res(jcl))
-                 !       dipvec(1,icl) = dreal(-eye*dz_res(jcl))/magdz
-        		!	    dipvec(2,icl) = dimag(-eye*dz_res(jcl))/magdz
-       			!	    charge(icl) = 0.d0
-       			!	    dipstr(icl) = hres*mu_res(jcl)*magdz/(2.d0*pi)
-			 
-						zcauchy = mu_res(jcl)*dz_res(jcl)/ &
+       					zcauchy = mu_res(jcl)*dz_res(jcl)/ &
 						(z_res(jcl) - zpoint)
 						zcauchy = hres*zcauchy*z2pii
 						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
 								- dreal(zcauchy)
 				end do
-			! call PRINI(0, 13)
-      		! call lfmm2dparttarg(ier, iprec, nbk, source, ifcharge, charge, &
-             !             ifdipole, dipstr, dipvec, ifpot, pot, ifgrad,  &
-              !            grad, ifhess, hess, ntarget, targ, ifpottarg, &
-               !           pottarg, ifgradtarg, gradtarg, ifhesstarg, hesstarg)
-    		 ! call PRINI(6, 13)
-      
-    !  if (ier.eq.4) then
-     !    print *, 'ERROR IN FMM: Cannot allocate tree workspace'
-      !   stop
-     ! else if(ier.eq.8) then
-     !    print *, 'ERROR IN FMM: Cannot allocate bulk FMM workspace'
-      !   stop
-     ! else if(ier.eq.16) then
-      !   print *, 'ERROR IN FMM: Cannot allocate multipole expansion workspace' 
-      !   stop
-     ! end if
-	  
-			!	ugrd_bad(ipoint) = ugrd_bad(ipoint) &
-			!				+ dreal(pottarg(1))	
 				umin_bad = min(umin_bad, ugrd_bad(ipoint))
 				umax_bad = max(umax_bad, ugrd_bad(ipoint))
 			end do			
