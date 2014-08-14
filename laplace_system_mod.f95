@@ -612,7 +612,7 @@ subroutine BUILD_BARNETT (mu,mu_res)
    use geometry_mod, only: k0, k, nd, nb,nbk, z_res, dz_res, ibeta, &
 						   XY_PLOT, pi, zgrd_bad,nr, ntheta, &
 						   z0_box, eye, nbkres, ndres, &
-						   hres, ialpha, neigh_boxes, &
+						   hres, neigh_boxes, &
 						   n_neigh,GET_NEAR_POINTS
    implicit none
    real(kind=8), intent(in) :: mu(nbk)
