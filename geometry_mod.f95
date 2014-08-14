@@ -411,14 +411,14 @@ subroutine GET_NEAR_POINTS()
 
 ! local variables
 	integer:: fac, ibox, jpoint, &
-				i, fpoint, istart, kbod
+				i, fpoint, istart, kbod, icount
 	real(kind=8):: box_rad
 	complex(kind=8):: z1, z2 
 
 
 
 	fac = ibeta*nd/nb
-
+	icount = 0
 	do kbod = k0, k
 		do ibox = 1, nb
 			z1 = z0_box(kbod- k0 +1, ibox)
@@ -430,14 +430,18 @@ subroutine GET_NEAR_POINTS()
 				if(cdabs(z1 - z2) .le. ig*box_rad) then
 					neigh_boxes(kbod + 1, ibox, istart) = jpoint
 					istart = istart + 1
-		!			print *, kbod, ibox, neigh_boxes(kbod + 1, ibox, istart - 1)
+					!			print *, kbod, ibox, neigh_boxes(kbod + 1, ibox, istart - 1)
 				end if
 			end do
 			!print *, "istart = ", istart
+			if(istart .ne. 2049 ) then
+						icount = icount + 1
+			end if
+
 			n_neigh(kbod - k0 + 1, ibox) = istart - 1
 		end do
 	end do
-			
+	print *, "Number of boxes which are not neighbours with everyone ", icount
 end subroutine GET_NEAR_POINTS
 
 !------------------------------------------------------------------
