@@ -79,7 +79,7 @@ subroutine SOLVE (rhs, soln, mu, A_log)
 !  igwork(4) = 0 - no preconditioner
 !  igwork(4) < 0 - preconditioner on the left (the only option here!)
 !  igwork(4) > 0 - preconditioner on the right
-      igwork(4) = -1
+      igwork(4) = 0
 
 !  provide initial guess soln
       do i = 1, norder
@@ -89,10 +89,10 @@ subroutine SOLVE (rhs, soln, mu, A_log)
 !  factor preconditioner
       if (igwork(4) < 0) then  
          t0 = etime(timep)
-         if ((bounded) .and. (dirichlet)) then  
-            call SCHUR_FACTOR_DIR_BNDED(schur, ipvtbf)
-         end if
-         t1 = etime(timep)
+        ! if ((bounded) .and. (dirichlet)) then  
+          !  call SCHUR_FACTOR_DIR_BNDED(schur, ipvtbf)
+        ! end if
+        ! t1 = etime(timep)
          print *, 'Time in factoring preconditioner = ', t1 - t0
       end if
       
@@ -172,15 +172,15 @@ subroutine SCHUR_FACTOR_DIR_BNDED(schur, ipvtbf)
    
       print *, '** In Preconditioner factoring routine  **'
 
-      istart = nd
-      do ibod = 1, k
-         do kbod = 1, k
+      istart = 0
+      do ibod = k0, k
+         do kbod = k0, k
             sum1 = 0.d0
             do i = 1, nd
                sum1 = sum1 &
                       + dlog(cdabs(z(istart+i) - zk(kbod + 1 - k0)))
             end do
-            schur(ibod, kbod) = sum1
+            schur(ibod+1, kbod+1) = sum1
          end do
          istart = istart + nd
       end do
@@ -600,8 +600,10 @@ subroutine MATVEC_DEBUG(N, XX, YY, NELT, IA, JA, A, ISYM)
 
 end subroutine MATVEC_DEBUG
 
-!----------------------------------------------------------------------
-subroutine BUILD_BARNETT (mu)
+
+!-------------------------------------------------------------------------
+
+subroutine BUILD_BARNETT (mu,mu_res)
 ! Reference:
 ! Alex Barnett, EVALUATION OF LAYER POTENTIALS CLOSE TO THE BOUNDARY FOR LAPLACE AND 
 ! HELMHOLTZ PROBLEMS ON ANALYTIC PLANAR DOMAINS
@@ -610,20 +612,19 @@ subroutine BUILD_BARNETT (mu)
    use geometry_mod, only: k0, k, nd, nb,nbk, z_res, dz_res, ibeta, &
 						   XY_PLOT, pi, zgrd_bad,nr, ntheta, &
 						   z0_box, eye, nbkres, ndres, &
-						   hres, ig, neigh_boxes, &
+						   hres, neigh_boxes, &
 						   n_neigh,GET_NEAR_POINTS
-
    implicit none
    real(kind=8), intent(in) :: mu(nbk)
+   real(kind=8), intent(out) :: mu_res(ibeta*nbk)
 !   real(kind=8), intent(out) :: cm(k0:k,nd/5,p)
 !
 ! local variables
-
-   integer :: i, kbod, istart, istartr, ipoint, im, m, ibox, inum, j, &
-			  jpoint, fac
-   real(kind=8) :: mu_res(ibeta*nbk), alpha(nd), alpha_res(ibeta*nd)
-   complex(kind=8) :: zmu(nd), zmu_res(ibeta*nd), work(3*nd+3*ibeta*nd+20), &
-			  					  zcauchy, z2pii
+   integer :: i, kbod, istart, istartr, ipoint, &
+			  im, ibox, inum, j, llimit, rlimit, fac, jpoint
+   real(kind=8) :: alpha(nd), alpha_res(ndres)
+   complex(kind=8) :: zmu(nd), zmu_res(ndres), work(3*nd+3*ndres+20), &
+					  zcauchy, z2pii
    character(32) :: options, optionsb
    
       open (unit=51, file = 'mat_plots/density.m')
@@ -637,8 +638,8 @@ subroutine BUILD_BARNETT (mu)
          alpha(i) = (i-1.d0)*2.d0*pi/nd
       end do
      ! call prin2(' alpha=*', alpha, nd)
-      do i = 1, ibeta*nd
-         alpha_res(i) = (i-1.d0)*2.d0*pi/(ibeta*nd)
+      do i = 1, ndres
+         alpha_res(i) = (i-1.d0)*2.d0*pi/(ndres)
       end do
 !
 ! interpolate density to M = ibeta*nd points on each boundary curve.
@@ -646,17 +647,17 @@ subroutine BUILD_BARNETT (mu)
       istart = 0
       istartr = 0
       
-      m = ibeta*nd
+
       do kbod = k0, k
          zmu = mu(istart+1:istart+nd)
          call XY_PLOT(alpha, mu(istart+1), nd, options, 51)
        !  call PRIN2 ('zmu = *', zmu, 2*nd)
-         call FINTERC (zmu, zmu_res, nd, m, work)
-         mu_res(istartr+1:istartr+m) = zmu_res
-         call XY_PLOT (alpha_res, mu_res(istartr+1), m, optionsb, 52)
+         call FINTERC (zmu, zmu_res, nd, ndres, work)
+         mu_res(istartr+1:istartr+ndres) = zmu_res
+         call XY_PLOT (alpha_res, mu_res(istartr+1), ndres, optionsb, 52)
        !  call PRIN2 ('mu_res = *', mu_res, m)
          istart = istart + nd
-         istartr = istartr + m
+         istartr = istartr + ndres
       end do
       close(51)
       close(52)
@@ -693,7 +694,6 @@ subroutine BUILD_BARNETT (mu)
 				!	cm(kbod - k0 + 1, ibox, j) = cm(kbod - k0 + 1, ibox, j)*ndres/istart	
 
 			end do
-
 		end do
 	end do
  
@@ -715,6 +715,5 @@ subroutine BUILD_BARNETT (mu)
 	 !	end do
 	 ! end do
 end subroutine BUILD_BARNETT
-
 
 end module laplace_system_mod

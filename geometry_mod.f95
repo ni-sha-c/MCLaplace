@@ -40,8 +40,9 @@ module geometry_mod
 ! Boundary of "bad" part of domain - i.e. region close enough to boundary that
 ! trapezoid rule breaks down
    real(kind=8) :: x_bad(nmax), y_bad(nmax), ds_bad(nmax)
-   integer :: nb, ig
+   integer :: nb
    complex(kind=8) :: z_bad(nmax), dz_bad(nmax), z0_box(kmax,nmax/5)
+
 !
 ! Pointer arrays to points in grid that are in "close" region, and which 
 ! contour they are close to
@@ -50,12 +51,14 @@ module geometry_mod
 			  n_neigh(kmax,nmax/5) 
 !
 ! resampled domain variables
-   integer, parameter :: ibeta = 4, p = 20
-   integer :: ndres, nbkres
-   real(kind=8) :: x_res(ibeta*nmax), y_res(ibeta*nmax), ds_res(ibeta*nmax), &
-					hres
+   integer, parameter :: ibeta = 4, p = 20, ialpha = 10
+   integer ::  ndres, nbkres, ig
+   real(kind=8) :: g, hres, x_res(ibeta*nmax), y_res(ibeta*nmax), & 
+				  ds_res(ibeta*nmax)
    complex(kind=8) :: z_res(ibeta*nmax), dz_res(ibeta*nmax)
-!
+   integer :: inear_box(nmax/5, ibeta*nmax)	
+
+
 ! Grid variables
    integer :: nx, ny, i_grd(ngrd_max), nr, ntheta
    real(kind=8) :: x_grd(ngrd_max), y_grd(ngrd_max)
@@ -80,13 +83,14 @@ subroutine CURVE_PARAM(th, kbod, xp, yp, xdot, ydot, xddot, yddot)
    implicit none
    real(kind=8), intent(in) :: th
    integer, intent(in) :: kbod
+   integer::N
    real(kind=8), intent(out) :: xp, yp, xdot, ydot, xddot, yddot
-   real(kind=8) :: ai, bi, N, a2, b2, rnorm, radius, rdot, rddot, R, &
+   real(kind=8) :: ai, bi, a2, b2, rnorm, radius, rdot, rddot, R, &
                    anu, den, ddot, dddot, cs, sn, eps, snn, csn, thetax
 
          N = ncyc(kbod+1-k0)
          ai = ak(kbod+1-k0)
-         bi = bk(kbod+1-k0)
+		 bi = bk(kbod+1-k0)	         
          thetax = 0.d0
          
          if (N.eq.0) then
@@ -94,56 +98,15 @@ subroutine CURVE_PARAM(th, kbod, xp, yp, xdot, ydot, xddot, yddot)
             sn = dsin(th-thetax)
             a2 = (ai)**2
             b2 = (bi)**2
-            rnorm = dsqrt(b2*cs**2 + a2*sn**2)
-            radius = ai*bi/rnorm
-            rdot = -ai*bi*cs*sn*(-b2+a2)/rnorm**3
-            rddot =  -ai*bi*(2.d0*a2*b2*cs**2*sn**2                &
-                           +a2**2*cs**4 + a2*b2-a2**2+b2**2*cs**4  &
-                           -2.d0*b2**2*cs**2)/rnorm**5
-            xp = radius*dcos(th)
-            yp = radius*dsin(th)
+            xp = ai*dcos(th)
+            yp = bi*dsin(th)
 
             cs = dcos(th)
             sn = dsin(th)
-            xdot = rdot*cs - radius*sn
-            ydot = rdot*sn + radius*cs
-            xddot = rddot*cs - 2.d0*rdot*sn - radius*cs
-            yddot = rddot*sn + 2.d0*rdot*cs - radius*sn
-           elseif (N.lt.0) then
-            R = ai
-            anu = bi
-            den = (1.d0-2.d0*anu*dcos(2.d0*th)+anu**2)  &
-                 *dsqrt(1.d0+anu**2)
-            ddot = 4.d0*anu*dsin(2.d0*th)*dsqrt(1.d0+anu**2)
-            dddot = 8.d0*anu*dcos(2.d0*th)*dsqrt(1.d0+anu**2)
-            xp = (1.d0-anu**2)*(1.d0-anu)*R*dsqrt(2.d0)*dcos(th)/den
-            yp = (1.d0-anu**2)*(1.d0+anu)*R*dsqrt(2.d0)*dsin(th)/den
-            xdot = -(1.d0-anu**2)*(1.d0-anu)*R*dsqrt(2.d0)*dsin(th)/den  &
-                   -xp*ddot/den            
-            xddot = -xp   &
-                    +(1.d0-anu**2)*(1.d0-anu)*R*dsqrt(2.d0)  &
-                                  *dsin(th)*ddot/den**2   &
-                    - xdot*ddot/den - xp*dddot/den    &
-                    + xp*ddot**2/den**2
-            ydot = (1.d0-anu**2)*(1.d0+anu)*R*dsqrt(2.d0)*dcos(th)/den  &
-                   -yp*ddot/den
-            yddot = -yp  &
-                    -(1.d0-anu**2)*(1.d0+anu)*R*dsqrt(2.d0)  &
-                                  *dcos(th)*ddot/den**2  &
-                    - ydot*ddot/den - yp*dddot/den   &
-                    + yp*ddot**2/den**2 
-           else
-            eps = bi
-            cs = dcos(th)
-            sn = dsin(th)
-            snn = dsin(N*th)
-            csn = dcos(N*th)
-            xp = ai*cs + bi*csn
-            yp = ai*sn - bi*snn
-            xdot = -ai*sn - N*bi*snn
-            xddot = -ai*cs - N**2*bi*csn
-            ydot = ai*cs - N*bi*csn
-            yddot = -ai*sn + N**2*bi*snn
+            xdot = -1.d0*ai*sn
+            ydot = bi*cs
+            xddot = -1.d0*ai*cs
+            yddot = -1.d0*bi*sn
          end if
 
 end subroutine CURVE_PARAM
@@ -338,7 +301,6 @@ subroutine BAD_DOMAIN_BNDRY()
 
 end subroutine BAD_DOMAIN_BNDRY
 
-
 !----------------------------------------------------------------------
 
 
@@ -422,8 +384,8 @@ subroutine BUILD_CLOSEEVAL_GRID()
       end do
 
 	
-      open(unit = 32, file = 'mat_plots/xgrid_bad_plot.m')
-      open(unit = 33, file = 'mat_plots/ygrid_bad_plot.m')
+      open(unit = 32, file = 'mat_plots/xgrid_bad.m')
+      open(unit = 33, file = 'mat_plots/ygrid_bad.m')
 
    
       call X_DUMP(xgrd_bad,(k-k0+1)*nr*ntheta, 32)
@@ -439,8 +401,6 @@ subroutine BUILD_CLOSEEVAL_GRID()
 end subroutine BUILD_CLOSEEVAL_GRID
 
 !----------------------------------------------------------------------
-
-
 
 subroutine GET_NEAR_POINTS()
 
@@ -474,18 +434,17 @@ subroutine GET_NEAR_POINTS()
 				end if
 			end do
 			!print *, "istart = ", istart
-			!if(istart .ne. 2049 ) then
-			!			icount = icount + 1
-			!end if
+			if(istart .ne. 2049 ) then
+						icount = icount + 1
+			end if
 
 			n_neigh(kbod - k0 + 1, ibox) = istart - 1
 		end do
 	end do
-	!print *, "Number of boxes which are not neighbours with everyone ", icount
+	print *, "Number of boxes which are not neighbours with everyone ", icount
 end subroutine GET_NEAR_POINTS
 
 !------------------------------------------------------------------
-
 
 subroutine RESAMPLE_DOMAIN ()
 !
@@ -510,11 +469,11 @@ subroutine RESAMPLE_DOMAIN ()
       istart = 0
       istartr = 0
       do kbod = k0, k
-         call FINTERC (z(istart+1), z_res(istartr+1), nd, ibeta*nd, work)
-         call FINTERC (dz(istart+1), dz_res(istartr+1), nd, ibeta*nd, work)
+         call FINTERC (z(istart+1), z_res(istartr+1), nd, ndres, work)
+         call FINTERC (dz(istart+1), dz_res(istartr+1), nd, ndres, work)
          call Z_PLOT(z_res(istartr+1), nd*ibeta, options, 31)
          istart = istart + nd
-         istartr = istartr + ibeta*nd
+         istartr = istartr + ndres
       end do
       close(31)
          
@@ -536,7 +495,7 @@ subroutine BUILD_GRID(i_grd, x_grd, y_grd)
 ! local variables
    integer :: i, j, istart, jstart, kbod, ix, iy, ipot, i_tmp(nx,ny)
    real(kind=8) :: hx, hy, eps, ds_max, xleft, xright, ybot, ytop, x, y, tol
-   real(kind=8) :: xgrd_good(nx*ny) , ygrd_good(nx*ny)
+
 !
 ! FMM work arrays
    integer :: iprec, ifcharge, ifdipole, ifpot, ifgrad, ifhess, ntarget, &
@@ -621,7 +580,7 @@ subroutine BUILD_GRID(i_grd, x_grd, y_grd)
     
          if (ier.eq.4) then
             print *, 'ERROR IN FMM: Cannot allocate tree workspace'
-            stop
+           stop
          else if(ier.eq.8) then
             print *, 'ERROR IN FMM: Cannot allocate bulk FMM workspace'
             stop
@@ -694,16 +653,12 @@ subroutine BUILD_GRID(i_grd, x_grd, y_grd)
       
 ! unpack into grid
       jstart = 1
-	  istart = 1
       tol = 0.4d0
       do i = 1, nx
          do j = 1, ny
             if ((dabs(dreal(pottarg(jstart))-1.d0) .lt. tol).and. &
                 (i_grd(i,j) .eq. 0) )then
                i_grd(i,j) = 2
-			   xgrd_good(istart) = x_grd(i, j)
-			   ygrd_good(istart) = y_grd(i, j)
-			   istart = istart + 1
             end if
             jstart = jstart + 1 
          end do
@@ -714,29 +669,46 @@ subroutine BUILD_GRID(i_grd, x_grd, y_grd)
       open(unit = 31, file = 'mat_plots/igrid.m')
       open(unit = 32, file = 'mat_plots/xgrid.m')
       open(unit = 33, file = 'mat_plots/ygrid.m')
-	  open(unit = 34, file = 'mat_plots/xgrd_plot.m')
-      open(unit = 35, file = 'mat_plots/ygrd_plot.m')
-
-
 
       call INT_GRID_DUMP(i_grd, 31)
       call REAL_GRID_DUMP(x_grd, 32)
       call REAL_GRID_DUMP(y_grd, 33)
-	
-	  call X_DUMP(xgrd_good, istart - 1, 34)
-	  call X_DUMP(ygrd_good, istart - 1, 35)
 
       close(31)
       close(32)
       close(33)
-	  close(34)
-	  close(35)
  
       print *, 'SUCCESSFULLY BUILT GRID'
       
 end subroutine BUILD_GRID
 
 !----------------------------------------------------------------------
+
+subroutine POPULATE_INEAR_BOX()
+
+	!local variables
+	implicit none
+	integer :: nb,ibox, kbod, ipoint, istart, inum
+		
+	nb = nd/5
+
+	do ibox =  1, nb
+		istart = 1
+		do kbod = k0, k
+			do ipoint = 1, ndres
+				inum = kbod*ndres + ipoint
+				if(cdabs(z_res(inum) - z0_box(kbod, ibox)).le.g) then
+					inear_box(ibox, istart) = inum
+					istart = istart + 1
+				end if
+			end do   
+		end do
+	end do
+
+end subroutine POPULATE_INEAR_BOX
+
+
+!------------------------------------------------------------------------
 
 subroutine ORGANIZE_CLOSE_POINTS (i_grd)
 !
@@ -961,7 +933,10 @@ subroutine X_DUMP(x, n, iw)
       write(iw, *) '];'
       
 end subroutine X_DUMP
-!-------------------------------------------------------------
+
+
+
+!----------------------------------------------------------------------
 
 subroutine Z_PLOT(z, n, options, iw)
 !
