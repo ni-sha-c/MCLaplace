@@ -101,8 +101,8 @@ subroutine INITIALIZE(debug)
 !
 ! initialize number of holes and points per hole
       k0 = 0
-      k = 0
-      nd = 512
+      k = 1
+      nd = 256
       bounded = k0==0
       print *, 'bounded = ', bounded
 !
@@ -147,7 +147,7 @@ subroutine INITIALIZE(debug)
 	  ndres = ibeta*nd
 	  nbkres = (k + 1 -k0)*ndres
 	  hres = 2.d0*pi/ndres
-	  ig = 30
+	  ig = 7
 
 ! initialize number of boxes 
 	  nb = nd/4
@@ -553,20 +553,23 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 ! For points far enough from boundary, unpack into grid
       umax_bad = -1.d10
       umin_bad = 1.d10
+
+	  z2pii = 1.d0/(2.d0*pi*eye)
       
-     ! do i = 1, ntarget 
-      !        ugrd_bad(i) = dreal(pottarg(i))
-	!			  if(k.gt.0) then	
-     !         	do kbod = 1, k
-      !          	  ugrd_bad(i) = ugrd_bad(i) & 
-       !             	+ A_log(kbod-k0)*dlog(cdabs(zgrd_bad(i) - zk(kbod + 1 - k0)))
-        !       	end do
-		!	  end if
-                  
-    ! end do
+      do i = 1, ntarget
+			zpoint = zgrd_bad(i)
+			ugrd_bad(i) = 0.d0
+			do jcl = 1, nbkres 
+   				zcauchy = mu_res(jcl)*dz_res(jcl)/ &
+							(z_res(jcl) - zpoint)
+				zcauchy = hres*zcauchy*z2pii
+				ugrd_bad(i) = ugrd_bad(i) &
+								+ dreal(zcauchy)               
+        	end do 
+      end do
 
 
-	z2pii = 1.d0/(2.d0*pi*eye)
+
       
 	do kbod = k0, k
 		do i = 1, nr
@@ -579,13 +582,13 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 					
 				zpoint = zgrd_bad(ipoint)
 				z0 = z0_box(kbod - k0 + 1,ibox(j))	
-			!	do im = 1, p
-			!		ugrd_bad(ipoint) = ugrd_bad(ipoint) + &
-			!			dreal(cm(kbod - k0 + 1, ibox(j), im)*((zpoint - z0)**(im-1)))			
-			!	end do
+				do im = 1, p
+					ugrd_bad(ipoint) = ugrd_bad(ipoint) + &
+						dreal(cm(kbod - k0 + 1, ibox(j), im)*((zpoint - z0)**(im-1)))			
+				end do
 				targ(1,1) = xgrd_bad(ipoint)
 				targ(2,1) = ygrd_bad(ipoint)
-		  		ugrd_bad(ipoint) = 0.d0 
+			 	 
 				do icl = 1, n_neigh(kbod - k0 + 1, ibox(j))
 						jcl = neigh_boxes(kbod - k0 + 1, ibox(j), icl)
 				   	    magdz = cdabs(dz_res(jcl))
@@ -600,7 +603,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 						(z_res(jcl) - zpoint)
 						zcauchy = hres*zcauchy*z2pii
 						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
-								+ dreal(zcauchy)
+								- dreal(zcauchy)
 				end do
 			 call PRINI(0, 13)
       		 call lfmm2dparttarg(ier, iprec, nbk, source, ifcharge, charge, &
@@ -621,7 +624,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
       end if
 	  
 			!	ugrd_bad(ipoint) = ugrd_bad(ipoint) &
-			!				-dreal(pottarg(1))	
+			!				+ dreal(pottarg(1))	
 				umin_bad = min(umin_bad, ugrd_bad(ipoint))
 				umax_bad = max(umax_bad, ugrd_bad(ipoint))
 			end do			
