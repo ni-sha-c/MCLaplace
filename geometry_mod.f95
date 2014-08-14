@@ -420,8 +420,8 @@ subroutine BUILD_CLOSEEVAL_GRID()
       end do
 
 	
-      open(unit = 32, file = 'mat_plots/xgrid_bad.m')
-      open(unit = 33, file = 'mat_plots/ygrid_bad.m')
+      open(unit = 32, file = 'mat_plots/xgrid_bad_plot.m')
+      open(unit = 33, file = 'mat_plots/ygrid_bad_plot.m')
 
    
       call X_DUMP(xgrd_bad,(k-k0+1)*nr*ntheta, 32)
@@ -534,7 +534,7 @@ subroutine BUILD_GRID(i_grd, x_grd, y_grd)
 ! local variables
    integer :: i, j, istart, jstart, kbod, ix, iy, ipot, i_tmp(nx,ny)
    real(kind=8) :: hx, hy, eps, ds_max, xleft, xright, ybot, ytop, x, y, tol
-
+   real(kind=8) :: xgrd_good(nx*ny) , ygrd_good(nx*ny)
 !
 ! FMM work arrays
    integer :: iprec, ifcharge, ifdipole, ifpot, ifgrad, ifhess, ntarget, &
@@ -692,12 +692,16 @@ subroutine BUILD_GRID(i_grd, x_grd, y_grd)
       
 ! unpack into grid
       jstart = 1
+	  istart = 1
       tol = 0.4d0
       do i = 1, nx
          do j = 1, ny
             if ((dabs(dreal(pottarg(jstart))-1.d0) .lt. tol).and. &
                 (i_grd(i,j) .eq. 0) )then
                i_grd(i,j) = 2
+			   xgrd_good(istart) = x_grd(i, j)
+			   ygrd_good(istart) = y_grd(i, j)
+			   istart = istart + 1
             end if
             jstart = jstart + 1 
          end do
@@ -708,14 +712,23 @@ subroutine BUILD_GRID(i_grd, x_grd, y_grd)
       open(unit = 31, file = 'mat_plots/igrid.m')
       open(unit = 32, file = 'mat_plots/xgrid.m')
       open(unit = 33, file = 'mat_plots/ygrid.m')
+	  open(unit = 34, file = 'mat_plots/xgrd_plot.m')
+      open(unit = 35, file = 'mat_plots/ygrd_plot.m')
+
+
 
       call INT_GRID_DUMP(i_grd, 31)
       call REAL_GRID_DUMP(x_grd, 32)
       call REAL_GRID_DUMP(y_grd, 33)
+	
+	  call X_DUMP(xgrd_good, istart - 1, 34)
+	  call X_DUMP(ygrd_good, istart - 1, 35)
 
       close(31)
       close(32)
       close(33)
+	  close(34)
+	  close(35)
  
       print *, 'SUCCESSFULLY BUILT GRID'
       
