@@ -34,6 +34,7 @@ module laplace_system_mod
 
 contains
 
+
 !----------------------------------------------------------------------
 
 subroutine SOLVE (rhs, soln, mu, A_log)
@@ -120,12 +121,16 @@ subroutine SOLVE (rhs, soln, mu, A_log)
 !  unpack RHS into U and A_log
       do i = 1,nbk
          mu(i) = soln(i)
-      end do 
-      do kbod = 1, k
-         A_log(kbod) = soln(nbk + kbod)
       end do
+	  if(k.gt.0) then 
+      	do kbod = 1, k
+        	 A_log(kbod) = soln(nbk + kbod)
+      	end do
+		call PRIN2('A_log = *', A_log, k)
+	  end if
+	  
  !!!     call PRIN2(' mu = *', mu, nbk) 
-      call PRIN2('A_log = *', A_log, k)
+    
 
 end subroutine SOLVE
 
@@ -604,17 +609,18 @@ subroutine BUILD_BARNETT (mu,mu_res)
 ! HELMHOLTZ PROBLEMS ON ANALYTIC PLANAR DOMAINS
 ! SIAM J. Sci. Stat. Comput. 2012
 ! 
-   use geometry_mod, only: k0, k, nd, nbk, z_res, dz_res, ibeta, &
+   use geometry_mod, only: k0, k, nd, nb,nbk, z_res, dz_res, ibeta, &
 						   XY_PLOT, pi, zgrd_bad,nr, ntheta, &
 						   z0_box, eye, nbkres, ndres, &
-						   hres, ialpha, GET_NEAR_LIMITS
+						   hres, ialpha, neigh_boxes, &
+						   n_neigh,GET_NEAR_POINTS
    implicit none
    real(kind=8), intent(in) :: mu(nbk)
    real(kind=8), intent(out) :: mu_res(ibeta*nbk)
 !   real(kind=8), intent(out) :: cm(k0:k,nd/5,p)
 !
 ! local variables
-   integer :: i, kbod, istart, istartr, nb, ipoint, &
+   integer :: i, kbod, istart, istartr, ipoint, &
 			  im, ibox, inum, j, llimit, rlimit, fac, jpoint
    real(kind=8) :: alpha(nd), alpha_res(ndres)
    complex(kind=8) :: zmu(nd), zmu_res(ndres), work(3*nd+3*ndres+20), &
@@ -637,7 +643,7 @@ subroutine BUILD_BARNETT (mu,mu_res)
       end do
 !
 ! interpolate density to M = ibeta*nd points on each boundary curve.
-      nb = nd/5
+      
       istart = 0
       istartr = 0
       
@@ -660,16 +666,8 @@ subroutine BUILD_BARNETT (mu,mu_res)
 
 
 	z2pii = 1.d0/(2.d0*pi*eye) 
-	do kbod = k0, k
-		do ibox = 1, nb
-			do j = 1, p		
-				cm(kbod+1, ibox, j) = 0.d0
-			end do 
-		end do
-	end do
-
-  	call GET_NEAR_LIMITS(1, llimit, rlimit)
-	fac = ibeta*5
+  	call GET_NEAR_POINTS()
+	fac = ibeta*nd/nb
 
 	do kbod = k0, k
 		do ibox = 1,nb
@@ -679,55 +677,23 @@ subroutine BUILD_BARNETT (mu,mu_res)
 			do j = 1, p
 			!	print 199, ibox, llimit , rlimit
 			!	199 format(I5, I5, I5)	
-				if(llimit.gt.rlimit) then	
-					do jpoint = rlimit, llimit
-						ipoint = kbod*ndres + jpoint
-						zcauchy = mu_res(ipoint)*dz_res(ipoint)/ &
-						((z_res(ipoint) - z0_box(kbod+1,ibox))**j)
-						zcauchy = hres*zcauchy*z2pii
-						!if(kbod .eq. k0) then
-						!	zcauchy = -1.d0*zcauchy
-						!end if
-						cm(kbod+1, ibox, j) = cm(kbod+1, ibox, j) + &
-						zcauchy
-						istart = istart + 1
-					end do
-				else if(rlimit.gt.llimit) then
-					do jpoint = rlimit, ndres
-						ipoint = kbod*ndres + jpoint
-						zcauchy = mu_res(ipoint)*dz_res(ipoint)/ &
-						((z_res(ipoint) - z0_box(kbod+1,ibox))**j)
-						zcauchy = hres*zcauchy*z2pii
-						!if(kbod .eq. k0) then
-						!	zcauchy = -1.d0*zcauchy
-						!end if
-						cm(kbod+1, ibox, j) = cm(kbod+1, ibox, j) + &
-						zcauchy
-						istart = istart + 1
-					end do
-					do jpoint = 1, llimit
-						ipoint = kbod*ndres + jpoint
-						zcauchy = mu_res(ipoint)*dz_res(ipoint)/ &
-						((z_res(ipoint) - z0_box(kbod+1,ibox))**j)
-						zcauchy = hres*zcauchy*z2pii
-						!if(kbod .eq. k0) then
-						!	zcauchy = -1.d0*zcauchy
-						!end if
-						cm(kbod+1, ibox, j) = cm(kbod+1, ibox, j) + &
-						zcauchy
-						istart = istart + 1
-					end do
+					cm(kbod+1, ibox, j) = 0.d0
 
-				else
-					print *,"Something went wrong in finding boundary points &
-							close to box!", ibox
-				end if
-				!cm(kbod+1, ibox, j) = cm(kbod + 1, ibox, j)*ndres/istart
-				!print 200, kbod+1, ibox, j, cm(kbod + 1,ibox,j)
-				!200 format(I5, I5, I5, E15.8, E15.8)
-			end do  
-			llimit = mod(llimit + fac + ndres, ndres)
-			rlimit = mod(rlimit + fac + ndres, ndres) 
+					do jpoint = 1, n_neigh(kbod - k0 +1, ibox)	
+						ipoint = neigh_boxes(kbod - k0 +1, ibox, jpoint)
+						zcauchy = mu_res(ipoint)*dz_res(ipoint)/ &
+						((z_res(ipoint) - z0_box(kbod - k0 +1,ibox))**j)
+						zcauchy = hres*zcauchy*z2pii
+						!if(kbod .eq. k0) then
+						!	zcauchy = -1.d0*zcauchy
+						!end if
+						cm(kbod - k0 +1, ibox, j) = cm(kbod -k0 +1, ibox, j) + &
+								zcauchy
+						istart = istart + 1
+					end do
+				!	cm(kbod - k0 + 1, ibox, j) = cm(kbod - k0 + 1, ibox, j)*ndres/istart	
+
+			end do
 		end do
 	end do
  

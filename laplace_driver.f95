@@ -87,7 +87,7 @@ subroutine INITIALIZE(debug)
 !   bounded :: true if bounded domain, false if unbounded
 !   dirichlet :: true if Dirichlet BVP, false if Neumann
    use geometry_mod, only: pi, eye, kmax, npmax, nbk, k0, k, nd, h, &
-                           bounded, nx, ny, ngrd_max, nr, ntheta, &
+                           bounded, nx, ny, ngrd_max, nr, ntheta, nb, &
 						   ndres, nbkres, hres, ibeta, ig, g
    use laplace_system_mod, only: dirichlet
    implicit none
@@ -102,7 +102,7 @@ subroutine INITIALIZE(debug)
 ! initialize number of holes and points per hole
       k0 = 0
       k = 0
-      nd = 250
+      nd = 512
       bounded = k0==0
       print *, 'bounded = ', bounded
 !
@@ -147,11 +147,13 @@ subroutine INITIALIZE(debug)
 	  ndres = ibeta*nd
 	  nbkres = (k + 1 -k0)*ndres
 	  hres = 2.d0*pi/ndres
-	  ig = 20
+	  ig = 30
 
+! initialize number of boxes 
+	  nb = nd/4
 ! initialize close evaluation grid
-	  nr = 2
-	  ntheta = 10
+	  nr = 5
+	  ntheta = 50
 end subroutine INITIALIZE
 
 !----------------------------------------------------------------------
@@ -172,10 +174,10 @@ subroutine INIT_HOLE_GEO()
       ncyc(1) = 0
       zk(1) = dcmplx(0.d0, 0.0d0)
 
-!	  ak(2) = 0.25d0
-!      bk(2) = 0.25d0
-!      ncyc(2) = 0
-!      zk(2) = dcmplx(0.5d0, 0.d0)
+	  ak(2) = 0.25d0
+      bk(2) = 0.25d0
+      ncyc(2) = 0
+      zk(2) = dcmplx(0.5d0, 0.d0)
 
      
 end subroutine INIT_HOLE_GEO
@@ -388,12 +390,13 @@ subroutine GET_SOL_GRID(mu, A_log, i_grd, x_grd, y_grd, u_grd, umin, umax)
       do i = 1, nx
          do j = 1, ny
             z_grid = dcmplx(x_grd(i, j), y_grd(i, j))
-            if (i_grd(i, j) .eq. 2) then  
+            if (i_grd(i, j) .eq. 2) then 
                u_grd(i, j) = dreal(pottarg(istart))
                do kbod = 1, k
                   u_grd(i, j) = u_grd(i, j) & 
                     + A_log(kbod)*dlog(cdabs(z_grid - zk(kbod + 1 - k0)))
                end do
+			   
                umax = max(umax, u_grd(i, j))
                umin = min(umin, u_grd(i, j))
                istart = istart + 1 
@@ -442,10 +445,10 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 ! Calculate solution at grid points in the bad region. 
 
    use geometry_mod, only: k0, k, pi, h, nd, nbk, eye, z, dz, bounded, &
-                           zgrd_bad, xgrd_bad, ygrd_bad, z0_box, &
+                           nb,zgrd_bad, xgrd_bad, ygrd_bad, z0_box, &
 						   nx, ny, nr, ntheta, ndres, nbkres, & 
-						   z_res, dz_res, hres, ibeta,zk, &
-						   X_DUMP, GET_NEAR_LIMITS 
+						   z_res, dz_res, hres, ibeta,zk, n_neigh, &
+						   neigh_boxes,X_DUMP, GET_NEAR_POINTS 
 
 
    use laplace_system_mod, only: cm, p
@@ -457,7 +460,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 
 
 ! local variables
-   integer :: i, j, ipoint, kbod,nb, im, ibox(nd), &
+   integer :: i, j, ipoint, kbod, im, ibox(nd), &
 			  iibox, istart, llimit, rlimit, icl, jcl
    complex(kind=8):: zpoint, z0
    real(kind=8):: magdz
@@ -473,7 +476,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
                       hesstarg(3, (k-k0+1)*nr*ntheta), zcauchy, z2pii
 
 	
-	nb = nd/5
+	
 	umin_bad = 1.d10
 	umax_bad = -1.d10
 
@@ -551,15 +554,16 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
       umax_bad = -1.d10
       umin_bad = 1.d10
       
-      do i = 1, ntarget 
-              ugrd_bad(i) = dreal(pottarg(i))
-			
-               do kbod = 1, k
-                  ugrd_bad(i) = ugrd_bad(i) & 
-                    + A_log(kbod)*dlog(cdabs(zgrd_bad(i) - zk(kbod + 1 - k0)))
-               end do
-              !print *, i, ugrd_bad(i)    
-     end do
+     ! do i = 1, ntarget 
+      !        ugrd_bad(i) = dreal(pottarg(i))
+	!			  if(k.gt.0) then	
+     !         	do kbod = 1, k
+      !          	  ugrd_bad(i) = ugrd_bad(i) & 
+       !             	+ A_log(kbod-k0)*dlog(cdabs(zgrd_bad(i) - zk(kbod + 1 - k0)))
+        !       	end do
+		!	  end if
+                  
+    ! end do
 
 
 	z2pii = 1.d0/(2.d0*pi*eye)
@@ -567,54 +571,58 @@ subroutine GET_CLOSEEVAL_SOL_GRID(mu_res, A_log,ugrd_bad, &
 	do kbod = k0, k
 		do i = 1, nr
 			do j = 1,ntheta
-				ipoint = kbod*nr*ntheta + (i-1)*ntheta + j
+				ipoint = (kbod - k0)*nr*ntheta + (i-1)*ntheta + j
 				!ibox = j/(ntheta/nb) + 1
 				!if(mod(j, ntheta/nb).eq.0) then
 				!	ibox = ibox - 1
 				!end if
 					
 				zpoint = zgrd_bad(ipoint)
-				z0 = z0_box(kbod+1,ibox(j))
-		
-				do im = 1, p
-					ugrd_bad(ipoint) = ugrd_bad(ipoint) + &
-						dreal(cm(kbod+1, ibox(j), im)*((zpoint - z0)**(im-1)))			
-				end do
+				z0 = z0_box(kbod - k0 + 1,ibox(j))	
+			!	do im = 1, p
+			!		ugrd_bad(ipoint) = ugrd_bad(ipoint) + &
+			!			dreal(cm(kbod - k0 + 1, ibox(j), im)*((zpoint - z0)**(im-1)))			
+			!	end do
 				targ(1,1) = xgrd_bad(ipoint)
 				targ(2,1) = ygrd_bad(ipoint)
-				call GET_NEAR_LIMITS(ibox(j), llimit, rlimit)
-				istart = 1
-			 	if(llimit.gt.rlimit) then 
-					do icl = rlimit, llimit
-						jcl = kbod*ndres + icl 
+		  		ugrd_bad(ipoint) = 0.d0 
+				do icl = 1, n_neigh(kbod - k0 + 1, ibox(j))
+						jcl = neigh_boxes(kbod - k0 + 1, ibox(j), icl)
+				   	    magdz = cdabs(dz_res(jcl))
+       				    source(1, icl) = dreal(z_res(jcl))
+        			    source(2, icl) = dimag(z_res(jcl))
+                        dipvec(1,icl) = dreal(-eye*dz_res(jcl))/magdz
+        			    dipvec(2,icl) = dimag(-eye*dz_res(jcl))/magdz
+       				    charge(icl) = 0.d0
+       				    dipstr(icl) = hres*mu_res(jcl)*magdz/(2.d0*pi)
+			 
 						zcauchy = mu_res(jcl)*dz_res(jcl)/ &
 						(z_res(jcl) - zpoint)
 						zcauchy = hres*zcauchy*z2pii
 						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
-								- dreal(zcauchy)
-					end do
-				else if(rlimit.gt.llimit) then
-					do icl = rlimit, ndres
-						jcl = kbod*ndres + icl
-				 	zcauchy = mu_res(jcl)*dz_res(jcl)/ &
-						(z_res(jcl) - zpoint)
-						zcauchy = hres*zcauchy*z2pii
-						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
-								- dreal(zcauchy)
-					end do
-					do icl = 1, llimit
-						jcl = kbod*ndres + icl
-					zcauchy = mu_res(jcl)*dz_res(jcl)/ &
-						(z_res(jcl) - zpoint)
-						zcauchy = hres*zcauchy*z2pii
-						ugrd_bad(ipoint) = ugrd_bad(ipoint) &
-								- dreal(zcauchy)
-					end do
-				else
-					print *, "something went wrong in finding points &
-						close to a box"
-				end if
-			umin_bad = min(umin_bad, ugrd_bad(ipoint))
+								+ dreal(zcauchy)
+				end do
+			 call PRINI(0, 13)
+      		 call lfmm2dparttarg(ier, iprec, nbk, source, ifcharge, charge, &
+                          ifdipole, dipstr, dipvec, ifpot, pot, ifgrad,  &
+                          grad, ifhess, hess, ntarget, targ, ifpottarg, &
+                          pottarg, ifgradtarg, gradtarg, ifhesstarg, hesstarg)
+    		  call PRINI(6, 13)
+      
+      if (ier.eq.4) then
+         print *, 'ERROR IN FMM: Cannot allocate tree workspace'
+         stop
+      else if(ier.eq.8) then
+         print *, 'ERROR IN FMM: Cannot allocate bulk FMM workspace'
+         stop
+      else if(ier.eq.16) then
+         print *, 'ERROR IN FMM: Cannot allocate multipole expansion workspace' 
+         stop
+      end if
+	  
+			!	ugrd_bad(ipoint) = ugrd_bad(ipoint) &
+			!				-dreal(pottarg(1))	
+				umin_bad = min(umin_bad, ugrd_bad(ipoint))
 				umax_bad = max(umax_bad, ugrd_bad(ipoint))
 			end do			
 		end do
@@ -661,7 +669,7 @@ subroutine CHECK_ERROR_GRID(i_grd, x_grd, y_grd, u_grd, umin, umax)
             z_grid = dcmplx(x_grd(i, j), y_grd(i, j))
             if (i_grd(i,j) .eq. 2) then  
                u_ex = U_EXACT(bounded, z_grid)
-               err = max(err, dabs(u_ex - u_grd(i, j)))
+               err = max(err, dabs(u_ex - u_grd(i, j)))			  
          !      call PRIN2 ('u_ex = *', u_ex, 1)
          !      call PRIN2 ('  u_grd = *', u_grd(i,j), 1)
             end if
@@ -697,7 +705,7 @@ subroutine CHECK_ERROR_CLOSEEVAL_GRID(ugrd_bad,umin_bad,umax_bad)
 
       err = 0.d0
       u_inf = max(dabs(umin_bad), dabs(umax_bad))
-	  nb = nd/5
+	  !nb = nd/5
 	  !do j = 1, ntheta	
 	  !	ibox(j) = -1
 	  !	do iibox = 1, nb

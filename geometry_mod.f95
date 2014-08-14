@@ -40,13 +40,15 @@ module geometry_mod
 ! Boundary of "bad" part of domain - i.e. region close enough to boundary that
 ! trapezoid rule breaks down
    real(kind=8) :: x_bad(nmax), y_bad(nmax), ds_bad(nmax)
+   integer :: nb
    complex(kind=8) :: z_bad(nmax), dz_bad(nmax), z0_box(kmax,nmax/5)
 
 !
 ! Pointer arrays to points in grid that are in "close" region, and which 
 ! contour they are close to
    integer :: n_close(kmax), i_close(ngrd_max), j_close(ngrd_max), &
-              ic_pnt(kmax+1) 
+              ic_pnt(kmax+1), neigh_boxes(kmax,nmax/5,nmax/5), &
+			  n_neigh(kmax,nmax/5) 
 !
 ! resampled domain variables
    integer, parameter :: ibeta = 4, p = 20, ialpha = 10
@@ -240,7 +242,7 @@ subroutine BAD_DOMAIN_BNDRY()
 
       call DCFFTI (nd, wsave)
       
-      alpha_bad = 5.d0*h
+      alpha_bad = 2.d0*pi/nb
       call PRIN2 (' alpha_bad = *', alpha_bad, 1)
       istart = 0
       istartb = 0
@@ -251,7 +253,7 @@ subroutine BAD_DOMAIN_BNDRY()
          call DCFFTF (nd, zf, wsave)
 !
 ! first use these Fourier coefficients to calculate the box centres
-         do ibox = 1, nd/5
+         do ibox = 1, nb
             if (kbod .eq. 0) then 
                theta = ibox*alpha_bad + 0.5d0*eye*alpha_bad
              else
@@ -333,7 +335,7 @@ subroutine BUILD_CLOSEEVAL_GRID()
 
       call DCFFTI (nd, wsave)
       
-      alpha_bad = 5.d0*h
+      alpha_bad = 2.d0*pi/nb
       istart = 0
       istartb = 0
 	  
@@ -400,42 +402,43 @@ end subroutine BUILD_CLOSEEVAL_GRID
 
 !----------------------------------------------------------------------
 
-subroutine GET_NEAR_LIMITS(ibox, llimit, rlimit)
+subroutine GET_NEAR_POINTS()
 
 !temporarily assuming equal sized boxes.
 ! marks points within ig*boxradius of the center of ibox.	
 
 	implicit none
-	integer, intent(in):: ibox
-	integer, intent(out):: llimit, rlimit
-	
+
 ! local variables
-	integer:: llimit_box, rlimit_box, nlimit_box, nb, fac
+	integer:: fac, ibox, jpoint, &
+				i, fpoint, istart, kbod
+	real(kind=8):: box_rad
+	complex(kind=8):: z1, z2 
 
-	nlimit_box = ig/2
-	nb = nd/5
-	fac = 5*ibeta
 
-	rlimit_box = mod(ibox - nlimit_box + nb, nb)	 
-	llimit_box = mod(ibox + nlimit_box + nb, nb)
 
-	if(rlimit_box.eq.0) then
-		rlimit_box = nb
-	end if
-	
-	if(llimit_box.eq.0) then
-		llimit_box = nb
-	end if
+	fac = ibeta*nd/nb
 
-	if(mod(ig, 2).eq.0) then
-		rlimit = (rlimit_box - 1)*fac + fac/2
-		llimit = (llimit_box - 1)*fac + fac/2
-	else
-		rlimit = (rlimit_box - 1)*fac + 1
-		llimit = llimit_box*fac
-	end if 	
+	do kbod = k0, k
+		do ibox = 1, nb
+			z1 = z0_box(kbod- k0 +1, ibox)
+			fpoint = (kbod - k0)*ndres +  (ibox - 1)*fac + 1
+			box_rad = cdabs(z1 - z_res(fpoint)) 
+			istart = 1
+			do jpoint = 1,(k - k0 + 1)*ndres			
+				z2 = z_res(jpoint)
+				if(cdabs(z1 - z2) .le. ig*box_rad) then
+					neigh_boxes(kbod + 1, ibox, istart) = jpoint
+					istart = istart + 1
+		!			print *, kbod, ibox, neigh_boxes(kbod + 1, ibox, istart - 1)
+				end if
+			end do
+			!print *, "istart = ", istart
+			n_neigh(kbod - k0 + 1, ibox) = istart - 1
+		end do
+	end do
 			
-end subroutine GET_NEAR_LIMITS
+end subroutine GET_NEAR_POINTS
 
 !------------------------------------------------------------------
 
