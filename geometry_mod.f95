@@ -40,12 +40,14 @@ module geometry_mod
 ! Boundary of "bad" part of domain - i.e. region close enough to boundary that
 ! trapezoid rule breaks down
    real(kind=8) :: x_bad(nmax), y_bad(nmax), ds_bad(nmax)
+   integer :: nb
    complex(kind=8) :: z_bad(nmax), dz_bad(nmax), z0_box(kmax,nmax/5)
 !
 ! Pointer arrays to points in grid that are in "close" region, and which 
 ! contour they are close to
    integer :: n_close(kmax), i_close(ngrd_max), j_close(ngrd_max), &
-              ic_pnt(kmax+1) 
+              ic_pnt(kmax+1), neigh_boxes(kmax,nmax/5,nmax/5), &
+			  n_neigh(kmax,nmax/5) 
 !
 ! resampled domain variables
    integer, parameter :: ibeta = 4, p = 20
@@ -275,7 +277,7 @@ subroutine BAD_DOMAIN_BNDRY()
 
       call DCFFTI (nd, wsave)
       
-      alpha_bad = 5.d0*h
+      alpha_bad = 2.d0*pi/nb
       call PRIN2 (' alpha_bad = *', alpha_bad, 1)
       istart = 0
       istartb = 0
@@ -286,7 +288,7 @@ subroutine BAD_DOMAIN_BNDRY()
          call DCFFTF (nd, zf, wsave)
 !
 ! first use these Fourier coefficients to calculate the box centres
-         do ibox = 1, nd/5
+         do ibox = 1, nb
             if (kbod .eq. 0) then 
                theta = ibox*alpha_bad + 0.5d0*eye*alpha_bad
              else
@@ -369,7 +371,7 @@ subroutine BUILD_CLOSEEVAL_GRID()
 
       call DCFFTI (nd, wsave)
       
-      alpha_bad = 5.d0*h
+      alpha_bad = 2.d0*pi/nb
       istart = 0
       istartb = 0
 	  
@@ -422,7 +424,6 @@ subroutine BUILD_CLOSEEVAL_GRID()
       open(unit = 33, file = 'mat_plots/ygrid_bad.m')
 
    
-
       call X_DUMP(xgrd_bad,(k-k0+1)*nr*ntheta, 32)
       call X_DUMP(ygrd_bad, (k-k0+1)*nr*ntheta,33)
 
@@ -437,6 +438,53 @@ end subroutine BUILD_CLOSEEVAL_GRID
 
 !----------------------------------------------------------------------
 
+<<<<<<< HEAD
+=======
+subroutine GET_NEAR_POINTS()
+
+!temporarily assuming equal sized boxes.
+! marks points within ig*boxradius of the center of ibox.	
+
+	implicit none
+
+! local variables
+	integer:: fac, ibox, jpoint, &
+				i, fpoint, istart, kbod, icount
+	real(kind=8):: box_rad
+	complex(kind=8):: z1, z2 
+
+
+
+	fac = ibeta*nd/nb
+	icount = 0
+	do kbod = k0, k
+		do ibox = 1, nb
+			z1 = z0_box(kbod- k0 +1, ibox)
+			fpoint = (kbod - k0)*ndres +  (ibox - 1)*fac + 1
+			box_rad = cdabs(z1 - z_res(fpoint)) 
+			istart = 1
+			do jpoint = 1,(k - k0 + 1)*ndres			
+				z2 = z_res(jpoint)
+				if(cdabs(z1 - z2) .le. ig*box_rad) then
+					neigh_boxes(kbod + 1, ibox, istart) = jpoint
+					istart = istart + 1
+					!			print *, kbod, ibox, neigh_boxes(kbod + 1, ibox, istart - 1)
+				end if
+			end do
+			!print *, "istart = ", istart
+			if(istart .ne. 2049 ) then
+						icount = icount + 1
+			end if
+
+			n_neigh(kbod - k0 + 1, ibox) = istart - 1
+		end do
+	end do
+	print *, "Number of boxes which are not neighbours with everyone ", icount
+end subroutine GET_NEAR_POINTS
+
+!------------------------------------------------------------------
+
+>>>>>>> 8592e99... using trap rule gives an accuracy of 6 digits in the bad region.
 subroutine RESAMPLE_DOMAIN ()
 !
 ! Resample the boundary points to ibeta*nd points per curve
