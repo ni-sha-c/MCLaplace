@@ -88,7 +88,7 @@ subroutine INITIALIZE(debug)
 !   dirichlet :: true if Dirichlet BVP, false if Neumann
    use geometry_mod, only: pi, eye, kmax, npmax, nbk, k0, k, nd, h, &
                            bounded, nx, ny, ngrd_max, nr, ntheta, nb, &
-						   ndres, nbkres, hres, ibeta, ig, g
+						   ndres, nbkres, hres, ibeta, ig
 
    use laplace_system_mod, only: dirichlet
    implicit none
@@ -183,7 +183,7 @@ subroutine INIT_HOLE_GEO()
       zk(2) = dcmplx(0.5d0, 0.d0)
 
      
->>>>>>> 8592e99... using trap rule gives an accuracy of 6 digits in the bad region.
+
 end subroutine INIT_HOLE_GEO
 
    
@@ -606,7 +606,7 @@ subroutine GET_CLOSEEVAL_SOL_GRID(ugrd_bad, umin_bad, umax_bad)
                       hesstarg(3, (k-k0+1)*nr*ntheta)
 
 
-   complex(kind=8):: zpoint, z0
+   
 	
 	
 	umin_bad = 1.d10

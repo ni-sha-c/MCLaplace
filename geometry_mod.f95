@@ -40,7 +40,7 @@ module geometry_mod
 ! Boundary of "bad" part of domain - i.e. region close enough to boundary that
 ! trapezoid rule breaks down
    real(kind=8) :: x_bad(nmax), y_bad(nmax), ds_bad(nmax)
-   integer :: nb
+   integer :: nb, ig
    complex(kind=8) :: z_bad(nmax), dz_bad(nmax), z0_box(kmax,nmax/5)
 !
 ! Pointer arrays to points in grid that are in "close" region, and which 
@@ -51,7 +51,9 @@ module geometry_mod
 !
 ! resampled domain variables
    integer, parameter :: ibeta = 4, p = 20
-   real(kind=8) :: x_res(ibeta*nmax), y_res(ibeta*nmax), ds_res(ibeta*nmax)
+   integer :: ndres, nbkres
+   real(kind=8) :: x_res(ibeta*nmax), y_res(ibeta*nmax), ds_res(ibeta*nmax), &
+					hres
    complex(kind=8) :: z_res(ibeta*nmax), dz_res(ibeta*nmax)
 !
 ! Grid variables
@@ -438,8 +440,8 @@ end subroutine BUILD_CLOSEEVAL_GRID
 
 !----------------------------------------------------------------------
 
-<<<<<<< HEAD
-=======
+
+
 subroutine GET_NEAR_POINTS()
 
 !temporarily assuming equal sized boxes.
@@ -472,19 +474,19 @@ subroutine GET_NEAR_POINTS()
 				end if
 			end do
 			!print *, "istart = ", istart
-			if(istart .ne. 2049 ) then
-						icount = icount + 1
-			end if
+			!if(istart .ne. 2049 ) then
+			!			icount = icount + 1
+			!end if
 
 			n_neigh(kbod - k0 + 1, ibox) = istart - 1
 		end do
 	end do
-	print *, "Number of boxes which are not neighbours with everyone ", icount
+	!print *, "Number of boxes which are not neighbours with everyone ", icount
 end subroutine GET_NEAR_POINTS
 
 !------------------------------------------------------------------
 
->>>>>>> 8592e99... using trap rule gives an accuracy of 6 digits in the bad region.
+
 subroutine RESAMPLE_DOMAIN ()
 !
 ! Resample the boundary points to ibeta*nd points per curve

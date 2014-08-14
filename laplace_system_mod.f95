@@ -607,32 +607,23 @@ subroutine BUILD_BARNETT (mu)
 ! HELMHOLTZ PROBLEMS ON ANALYTIC PLANAR DOMAINS
 ! SIAM J. Sci. Stat. Comput. 2012
 ! 
-<<<<<<< HEAD
-   use geometry_mod, only: k0, k, nd, nbk, z_res, dz_res, ibeta, XY_PLOT, pi, &
-						   zgrd_bad,nr, ntheta, z0_box, eye
-=======
    use geometry_mod, only: k0, k, nd, nb,nbk, z_res, dz_res, ibeta, &
 						   XY_PLOT, pi, zgrd_bad,nr, ntheta, &
 						   z0_box, eye, nbkres, ndres, &
-						   hres, ialpha, neigh_boxes, &
+						   hres, ig, neigh_boxes, &
 						   n_neigh,GET_NEAR_POINTS
->>>>>>> 8592e99... using trap rule gives an accuracy of 6 digits in the bad region.
+
    implicit none
    real(kind=8), intent(in) :: mu(nbk)
 !   real(kind=8), intent(out) :: cm(k0:k,nd/5,p)
 !
 ! local variables
-<<<<<<< HEAD
-   integer :: i, kbod, istart, istartr, nb, ipoint, im, m, ibox, inum, j, nbkres
-   real(kind=8) :: mu_res(ibeta*nbk), alpha(nd), alpha_res(ibeta*nd), hres
+
+   integer :: i, kbod, istart, istartr, ipoint, im, m, ibox, inum, j, &
+			  jpoint, fac
+   real(kind=8) :: mu_res(ibeta*nbk), alpha(nd), alpha_res(ibeta*nd)
    complex(kind=8) :: zmu(nd), zmu_res(ibeta*nd), work(3*nd+3*ibeta*nd+20), &
-=======
-   integer :: i, kbod, istart, istartr, ipoint, &
-			  im, ibox, inum, j, llimit, rlimit, fac, jpoint
-   real(kind=8) :: alpha(nd), alpha_res(ndres)
-   complex(kind=8) :: zmu(nd), zmu_res(ndres), work(3*nd+3*ndres+20), &
->>>>>>> 8592e99... using trap rule gives an accuracy of 6 digits in the bad region.
-					  zcauchy, z2pii
+			  					  zcauchy, z2pii
    character(32) :: options, optionsb
    
       open (unit=51, file = 'mat_plots/density.m')
@@ -673,32 +664,6 @@ subroutine BUILD_BARNETT (mu)
 ! Calculate the coefficients c_m
 
 
-<<<<<<< HEAD
-	z2pii = 1.d0/(2.d0*pi*eye)
-
-	hres = 2.d0*pi/m
- 	nbkres = ibeta*nbk
-	do kbod = k0, k
-		do ibox = 1, nb
-			do j = 1, p		
-				cm(kbod+1, ibox, j) = 0.d0
-			end do 
-		end do
-	end do
-
-
-	do kbod = k0, k
-		do ibox = 1,nb
-			do j = 1, p		
-				do ipoint = 1, nbkres
-					zcauchy = mu_res(ipoint)*dz_res(ipoint)/ &
-						((z_res(ipoint) - z0_box(kbod+1,ibox))**j)
-					zcauchy = hres*zcauchy*z2pii
-					cm(kbod+1, ibox, j) = cm(kbod+1, ibox, j) + &
-					zcauchy
-				end do
-			end do  
-=======
 	z2pii = 1.d0/(2.d0*pi*eye) 
   	call GET_NEAR_POINTS()
 	fac = ibeta*nd/nb
@@ -728,7 +693,7 @@ subroutine BUILD_BARNETT (mu)
 				!	cm(kbod - k0 + 1, ibox, j) = cm(kbod - k0 + 1, ibox, j)*ndres/istart	
 
 			end do
->>>>>>> 8592e99... using trap rule gives an accuracy of 6 digits in the bad region.
+
 		end do
 	end do
  
